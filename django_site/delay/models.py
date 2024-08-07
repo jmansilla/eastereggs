@@ -62,3 +62,19 @@ class PingPong(models.Model):
     closed = models.BooleanField(default=False, help_text="True if the ping was closed (ie, it awaited the delay and closed it)")
     closed_timestamp = models.DateTimeField(default=None, null=True, blank=True, help_text="Leave Empty. It'll be filled when the ping was closed")
     tampering_attemp = models.BooleanField(default=False, help_text="True if the ping was tampered with wrong key")
+
+
+class Deadline(models.Model):
+    SHOW_CHALLENGE_EXPLANATION = 'show_challenge_explanation'
+    START_PRINTING_WHILE_DELAYING = 'start_printing_while_delaying'
+
+    name = models.CharField(max_length=100, unique=True)
+    deadline = models.DateTimeField()
+
+    @classmethod
+    def get_show_challenge_explanation_deadline(cls):
+        return cls.objects.filter(name=cls.SHOW_CHALLENGE_EXPLANATION).first()
+
+    @classmethod
+    def get_start_printing_while_delaying_deadline(cls):
+        return cls.objects.filter(name=cls.START_PRINTING_WHILE_DELAYING).first()
