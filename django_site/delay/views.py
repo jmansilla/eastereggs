@@ -1,9 +1,10 @@
-from django.shortcuts import render
+from datetime import datetime
+
 from django.http import HttpResponse, Http404, HttpResponseForbidden
+from django.shortcuts import get_object_or_404, render
+from django.utils import timezone
 
-from django.shortcuts import get_object_or_404
-
-from .models import SOGroup
+from .models import SOGroup, Deadline
 
 
 UNKWON_USERID = "UNKWON_USERID"
@@ -39,3 +40,17 @@ def ping_pong(request):
     return HttpResponse(msg)
 
 
+
+
+def show_challenge_explanation(request):
+    aware_now = timezone.make_aware(datetime.now())  # aware
+    deadline = Deadline.get_show_challenge_explanation_deadline()
+    if deadline is not None and deadline.deadline <= aware_now:
+        show = True
+    else:
+        show = False
+    forced = request.GET.get('--force', False)
+    if forced:
+        show = True
+    context = {'show': show, 'deadline': deadline, 'forced': forced}
+    return render(request, 'delay/show_challenge_explanation.html', context)
