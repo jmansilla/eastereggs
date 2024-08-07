@@ -1,0 +1,29 @@
+<head>
+    <title>SistOp {{ deadline.deadline|date:"Y" }} - Lab 1 - Punto Estrella</title>
+    <link rel="stylesheet" href="https://static.djangoproject.com/css/output.fde294a46e8e.css" >
+</head>
+<body>
+    <div class="copy-banner"><div class="container">
+        <h1>SistOp {{ deadline.deadline|date:"Y" }} - Lab 1 - Punto Estrella</h1>
+    </div></div>
+    <div class="container">
+        <div role="main" style="float: left;">
+            <div id="docs-content">
+                <div class="section">
+
+                    <h1>Punto Estrella</h1>
+                    {% if forced %}
+                    <div id="" class="admonition warning">SHOW del enunciado FORZADO con --force</div>
+                    {% endif %}
+                    {% if show %}
+                    <h2>Extra challenge - Visible desde {{ deadline.deadline|date:"Y-m-d H:i:s" }}</h2>
+                    {{deadline.text_rendered | safe }}
+                    {% else %}
+                    <p>El enunciado recién se podrá ver despues de {{ deadline.deadline|date:"Y-m-d H:i:s" }}</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+</body>
