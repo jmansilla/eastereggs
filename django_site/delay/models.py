@@ -1,6 +1,8 @@
 from datetime import datetime
 
 from django.db import models
+from markdownfield.models import MarkdownField, RenderedMarkdownField
+from markdownfield.validators import VALIDATOR_STANDARD
 
 
 class SOGroup(models.Model):
@@ -70,6 +72,11 @@ class Deadline(models.Model):
 
     name = models.CharField(max_length=100, unique=True)
     deadline = models.DateTimeField()
+    text = MarkdownField(rendered_field='text_rendered', default='', validator=VALIDATOR_STANDARD)
+    text_rendered = RenderedMarkdownField(default='')
+
+    def __str__(self) -> str:
+        return self.name
 
     @classmethod
     def get_show_challenge_explanation_deadline(cls):
