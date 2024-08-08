@@ -27,7 +27,7 @@ const char *GROUP_NUMBER = "so2024lab1g05";  // Replace with the group number
 const char *KEY = "KOKO";  // Replace with the key of each Group
 const char *EASTER_EGG_DISCOVERED = "false";  // Congrats, you discovered it! Change to "true" and you're done!
 
-const char *BASE_URL = "http://localhost:8000/delay/";
+const char *BASE_URL = "http://localhost:8000/delay/ping_pong";
 
 // FIXME: Make it possible to disable the easter egg with ENV variables
 // FIXME: Make it to register if was running tests (register such thing, but do not sleep/increase-delay in that case)
