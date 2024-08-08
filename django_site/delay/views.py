@@ -25,21 +25,22 @@ def ping_pong(request):
         return HttpResponseForbidden("Invalid key")
 
     if beated:
-        pp = group.handle_defeat(user_id)
+        pp, extra_msgs = group.handle_defeat(user_id)
     elif closing_pp_id:
         pp = group.handle_close(closing_pp_id)
         if pp is None:
             raise Http404("Invalid close id")
+        extra_msgs = "closed\n"
     else:
-        pp = group.handle_ping(user_id)
+        # Opening a Ping-Pong loop.
+        pp, extra_msgs = group.handle_ping(user_id)
 
     msg = "OK\n"
     msg += f"delay={pp.delay_recommended}\n"
     msg += f"pp_id={pp.id}\n"
+    msg += extra_msgs
 
     return HttpResponse(msg)
-
-
 
 
 def show_challenge_explanation(request):
