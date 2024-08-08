@@ -13,6 +13,13 @@
 #include <time.h>
 #include <unistd.h>
 
+
+const int MAX_RESPONSE_SIZE = 1<<20;
+const int MAX_USERNAME_SIZE = 256;
+const int MAX_URL_SIZE = 1024;
+const int MAX_RESPONSE_LINES = 1024;
+
+
 // Set to 1 to enable debug mode. 
 // May be overridden by setting environment variable PP_DEBUG=1
 int DEBUG = 0;
@@ -26,6 +33,56 @@ void debug_printf(const char *fmt, ...){
     }
 }
 
+
+// Anti-grep and Encryption
+// =========================
+// I dont want people to say "Hey, lets find where is this printed msg coming from" and succeed with a simple GREP.
+// That's why a given ENV-NAME instead of being hardcoded as is, is hardcoded encrypted, and for use needs to be decrypted
+// (same for the help-text-message).
+//
+// "The things I do for preventing people to find stuff using grep" (Jamie Lannister, Winterfell, just after pushing Bran)
+
+// while DECRYPTED == 0, ANTIGREP_VAR and ANTIGREP_MSG contents will be encrypted (with salt=0), so before using them for the first time
+// call my_encrypt with each of them and later set DECRYPTED to 1
+int DECRYPTED = 0;
+char ANTIGREP_VAR[14] = "fkhuyaczubofz";
+char ANTIGREP_MSG[85] = "=~E\nEGC^\n^BCY\nGOYYKMOY\nYO^\n^BO\nOD\\CXEDGOD^\n\\KXCKHFO\nfkhuyaczubofz\027\e";
+
+
+void my_encrypt(char *text, int salt){
+    // Modifies text in place. Text must be null terminated.
+    // Calling this function again with the same salt shall revert the string back to its original state
+    int i = 0;
+    int key = salt + 42;
+    int length;
+    char aux_c;
+    length = strlen(text);
+    for (i = 0; i < length; i++){
+        aux_c = text[i] ^ key;
+        text[i] = aux_c;
+    }
+}
+
+char *YELLOW_BG = "\033[30;43m";
+char *YELLOW_FG = "\033[33;40m";
+char *NORMAL    = "\033[0m";
+void show_help_to_user(const char *msg, int order){
+    if (DECRYPTED == 0) {
+        DECRYPTED = 1;
+        my_encrypt(ANTIGREP_VAR, 0);
+        my_encrypt(ANTIGREP_MSG, 0);
+    }
+
+    char* SKIP_HELP = getenv(ANTIGREP_VAR);
+    if (SKIP_HELP == NULL || SKIP_HELP[0] != '1') {
+        if (order == 0) {
+            // Only show this message once per PINGPONG_LOOP
+            printf("%s%s%s\n", YELLOW_FG, ANTIGREP_MSG, NORMAL);
+        }
+        printf("%s%s%s\n", YELLOW_BG, msg, NORMAL);
+    }
+}
+
 const char *GROUP_NUMBER = "so2024lab1g05";  // Replace with the group number
 const char *KEY = "KOKO";  // Replace with the key of each Group
 const char *EASTER_EGG_DISCOVERED = "false";  // Congrats, you discovered it! Change to "true" and you're done!
@@ -33,7 +90,6 @@ const char *EASTER_EGG_DISCOVERED = "false";  // Congrats, you discovered it! Ch
 const char *BASE_URL = "http://localhost:8000/delay/ping_pong";
 
 // FIXME: Make it possible to disable the easter egg with ENV variables
-// FIXME: Make it to register if was running tests (register such thing, but do not sleep/increase-delay in that case)
 
 // Callback function to handle the response data
 size_t write_callback(void *contents, size_t size, size_t nmemb, void *userp) {
@@ -64,12 +120,12 @@ int msleep(long msec)
     return res;
 }
 
+
 int process_ping_response(const char *response_text, int *delay, int *pp_id) {
-    const int MAX_LINES = 5;
     const int EXPECTED_LINES = 3;
-    char text_copy[1024];
-    char *lines[MAX_LINES];
-    int line_count = 0;
+    char text_copy[MAX_RESPONSE_SIZE];
+    char *lines[MAX_RESPONSE_LINES];
+    int line_count = 0, i = 0;
 
     // Copy response_text to a modifiable buffer
     strncpy(text_copy, response_text, sizeof(text_copy));
@@ -77,13 +133,13 @@ int process_ping_response(const char *response_text, int *delay, int *pp_id) {
 
     // Split the response text into lines
     char *line = strtok(text_copy, "\n");
-    while (line != NULL && line_count < MAX_LINES) {
+    while (line != NULL && line_count < MAX_RESPONSE_LINES) {
         lines[line_count++] = line;
         line = strtok(NULL, "\n");
     }
 
-    // Check if we have exactly EXPECTED_LINES (3) lines
-    if (line_count != EXPECTED_LINES) {
+    // Check if we have at least EXPECTED_LINES (3) lines
+    if (line_count < EXPECTED_LINES) {
         debug_printf("PING: Unexpected number of lines: %d. Expected at least: %d\n", line_count, EXPECTED_LINES);
         return -1; // Error code for incorrect number of lines
     }
@@ -108,6 +164,15 @@ int process_ping_response(const char *response_text, int *delay, int *pp_id) {
         return -4; // Error code for invalid pp_id
     }
     *pp_id = atoi(pp_id_str + 6);
+
+
+    for (i = EXPECTED_LINES; i < line_count; i++) {
+        line = lines[i];
+        debug_printf("PING: Line: %s\n", line);
+        if (line!= NULL && strncmp(line, "message-to-user: ", 17) == 0) {
+            show_help_to_user(line + 17, i - EXPECTED_LINES);
+        }
+    }
 
     return 0; // Success
 }
@@ -139,7 +204,7 @@ int ping_pong_loop() {
     // Initialize libcurl
     CURL *curl;
     CURLcode res;
-    char response_text[4096] = {0}; // Buffer to hold the response
+    char response_text[MAX_RESPONSE_SIZE] = {0}; // Buffer to hold the response
 
     curl_global_init(CURL_GLOBAL_DEFAULT);
     curl = curl_easy_init();
