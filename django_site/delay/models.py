@@ -1,6 +1,8 @@
 from datetime import datetime
 
+from django.utils import timezone
 from django.db import models
+
 from markdownfield.models import MarkdownField, RenderedMarkdownField
 from markdownfield.validators import VALIDATOR_STANDARD
 
@@ -23,6 +25,7 @@ class SOGroup(models.Model):
         return f'Grupo {self.group_number}: {self.group_name}'
 
     def handle_ping(self, user_id):
+        msg = ""
         if self.beaten:  # was already beaten. Just return delay 0 and consider it closed
             pp = PingPong.objects.create(group=self, user_id=user_id, delay_recommended=0, was_closed=True)
         else:
@@ -31,13 +34,24 @@ class SOGroup(models.Model):
                 # Yes, there may be a race condition here. I'm not dealing with it.
                 self.current_delay += self.delay_increment
             self.save()
-        return pp
+            PWD = 'CHANGEMEPWD'  # shall be extracted from Group.password
+            msg += f"(Not-so)-hidden-message: To win the challenge, append \"&defeat_pwd={PWD}\" to the url. "
+            msg += f"The easiest way to do that, is to add the following argument to the function causing the delay:\n"
+            msg += f"some_function_name(\"{PWD}\");\n"
+
+            extra_msgs = ""
+            for e_msg in Deadline.get_msgs_to_print_while_delaying_deadline():
+                extra_msgs += f"message-to-user: {e_msg.text.strip()}\n"
+            if extra_msgs:
+                msg += f"{extra_msgs}\n"
+
+        return pp, msg
 
     def handle_defeat(self, user_id):
         self.beaten = True
         self.beaten_timestamp = datetime.now()
         self.save()
-        return self
+        return self, ""
 
     def handle_close(self, pp_id):
         try:
@@ -46,7 +60,7 @@ class SOGroup(models.Model):
             return None
 
         pp.closed = True
-        pp.closed_timestamp = datetime.now()
+        pp.closed_timestamp = timezone.now()
         pp.save()
         return pp
 
@@ -68,7 +82,6 @@ class PingPong(models.Model):
 
 class Deadline(models.Model):
     SHOW_CHALLENGE_EXPLANATION = 'show_challenge_explanation'
-    START_PRINTING_WHILE_DELAYING = 'start_printing_while_delaying'
 
     name = models.CharField(max_length=100, unique=True)
     deadline = models.DateTimeField()
@@ -83,5 +96,9 @@ class Deadline(models.Model):
         return cls.objects.filter(name=cls.SHOW_CHALLENGE_EXPLANATION).first()
 
     @classmethod
-    def get_start_printing_while_delaying_deadline(cls):
-        return cls.objects.filter(name=cls.START_PRINTING_WHILE_DELAYING).first()
+    def get_msgs_to_print_while_delaying_deadline(cls):
+        from datetime import timedelta
+        now = timezone.now() + timedelta(days=30)  # for testing
+        # now = timezone.now()
+        msgs = cls.objects.exclude(name=cls.SHOW_CHALLENGE_EXPLANATION).exclude(deadline__gt=now).order_by('deadline')
+        return msgs
