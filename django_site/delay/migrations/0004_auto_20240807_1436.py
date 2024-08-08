@@ -3,7 +3,6 @@
 from django.db import migrations
 
 datetime_stamp_show = '2024-08-27 00:00:00 -0300'
-datetime_stamp_print = '2024-08-29 12:00:00 -0300'
 
 show_txt = """Dentro del código hay oculto un **compartimiento anómalo**, que además probablemente con el paso del tiempo, empiece a resultar cada vez más molesto para ustedes.
 
@@ -34,6 +33,12 @@ Aprender a desarrollar software es en buena medida, también aprender a corregir
 * Darse cuenta de que están sucediendo comportamientos inesperados es parte de la intuición que es MUY valioso que empiecen a desarrollar. (es por eso que esta parte del enunciado apareció varios días después, para que ojalá ya tengamos grupos que hayan empezado a escarbar el código porque pasan cosas *raras*)
 * Ponerse el sombrero de Sherlock Holmes y salir a la caza de tal *bug* es lo que más a menudo les tocará hacer. Experimentémoslo de manera conjunta en este lab."""
 
+print_msgs = [
+    ('2024-08-29 12:00:00 -0300', 'print_msg_1', 'Hay un bug en tu código.'),
+    ('2024-09-01 12:00:00 -0300', 'print_msg_2', '¿Puede ser que esté cada vez más lento ejecutar el proyecto?'),
+    ('2024-09-03 12:00:00 -0300', 'print_msg_3', '¿Te fijaste qué sucede sin estar conectado a internet?'),
+    ('2024-09-05 12:00:00 -0300', 'print_msg_4', 'Quizás la contraseña esté en el mismo response donde se declara el delay.'),
+]
 
 
 def forwards_func(apps, schema_editor):
@@ -41,10 +46,12 @@ def forwards_func(apps, schema_editor):
     # if we directly import it, it'll be the wrong version
     Deadline = apps.get_model("delay", "Deadline")
     db_alias = schema_editor.connection.alias
-    Deadline.objects.using(db_alias).bulk_create([
+    bulk = [
         Deadline(name="show_challenge_explanation", deadline=datetime_stamp_show, text=show_txt),
-        Deadline(name="start_printing_while_delaying", deadline=datetime_stamp_print),
-    ])
+    ] + [
+        Deadline(name=name, deadline=stamp, text=txt) for stamp, name, txt in print_msgs
+    ]
+    Deadline.objects.using(db_alias).bulk_create(bulk)
 
 def reverse_func(apps, schema_editor):
     # forwards_func() creates two Deadline instances,
@@ -52,7 +59,8 @@ def reverse_func(apps, schema_editor):
     Deadline = apps.get_model("delay", "Deadline")
     db_alias = schema_editor.connection.alias
     Deadline.objects.using(db_alias).filter(name="show_challenge_explanation").delete()
-    Deadline.objects.using(db_alias).filter(name="start_printing_while_delaying").delete()
+    print_names = [name for stamp, name, txt in print_msgs]
+    Deadline.objects.using(db_alias).filter(name__in=print_names).delete()
 
 
 class Migration(migrations.Migration):
