@@ -6,22 +6,25 @@
 #include <ctype.h>
 #include <curl/curl.h>
 #include <errno.h>
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
 
-//#define PP_DEBUG 1
-#ifdef PP_DEBUG
-# define PP_DEBUG_PRINT(x) printf x
-#else
-# define PP_DEBUG_PRINT(x) do {} while (0)
-#endif
+// Set to 1 to enable debug mode. 
+// May be overridden by setting environment variable PP_DEBUG=1
+int DEBUG = 0;
 
-// use it like this
-// PP_DEBUG_PRINT(("var1: %d; var2: %d; str: %s\n", var1, var2, str));
-
+void debug_printf(const char *fmt, ...){
+    va_list args;
+    if (DEBUG){
+        va_start(args, fmt);
+        vfprintf(stderr, fmt, args);
+        va_end(args);
+    }
+}
 
 const char *GROUP_NUMBER = "so2024lab1g05";  // Replace with the group number
 const char *KEY = "KOKO";  // Replace with the key of each Group
@@ -81,6 +84,7 @@ int process_ping_response(const char *response_text, int *delay, int *pp_id) {
 
     // Check if we have exactly EXPECTED_LINES (3) lines
     if (line_count != EXPECTED_LINES) {
+        debug_printf("PING: Unexpected number of lines: %d. Expected at least: %d\n", line_count, EXPECTED_LINES);
         return -1; // Error code for incorrect number of lines
     }
 
@@ -113,11 +117,15 @@ int ping_pong_loop() {
     int check_error = 0;
     int delay_id = 0;
     int delay_milliseconds = 0;
+    char* PP_DEBUG = getenv("PP_DEBUG");
+    if (PP_DEBUG != NULL && PP_DEBUG[0] != '0') {
+        DEBUG = 1;
+    }
 
     // Get the username
     char username[256];
     if (getlogin_r(username, sizeof(username)) != 0) {
-        PP_DEBUG_PRINT(("getlogin_r"));
+        debug_printf("getlogin_r");
         return -1;
     }
 
@@ -126,7 +134,7 @@ int ping_pong_loop() {
     snprintf(PING_URL, sizeof(PING_URL),
              "%s?user_id=%s&group=%s&key=%s&discovered=%s",
             BASE_URL, username, GROUP_NUMBER, KEY, EASTER_EGG_DISCOVERED);
-    PP_DEBUG_PRINT(("PING: URL: %s\n", PING_URL));
+    debug_printf("PING: URL: %s\n", PING_URL);
 
     // Initialize libcurl
     CURL *curl;
@@ -145,28 +153,30 @@ int ping_pong_loop() {
 
         // Check for errors
         if (res != CURLE_OK) {
-            PP_DEBUG_PRINT(("PING: curl_easy_perform() failed: %s\n", curl_easy_strerror(res)));
+            debug_printf("PING: curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
         } else {
             // Process the response
-            PP_DEBUG_PRINT(("PING: Response: %s\n", response_text));
+            debug_printf("PING: Response: %s\n", response_text);
 
             check_error = process_ping_response(response_text, &delay_milliseconds, &delay_id);
             if (check_error != 0) {
-                PP_DEBUG_PRINT(("PING: process_ping_response() failed: %d\n", check_error));
+                debug_printf("PING: process_ping_response() failed: %d\n", check_error);
             } else {
-                PP_DEBUG_PRINT(("PING: delay_id: %d; delay_milliseconds: %d\n", delay_id, delay_milliseconds));
+                debug_printf("PING: delay_id: %d; delay_milliseconds: %d\n", delay_id, delay_milliseconds);
                 msleep((long)delay_milliseconds);
 
-                PP_DEBUG_PRINT(("PING: Milliseconds exhausted. Starting PONG.\n"));
+                debug_printf("PING: Milliseconds exhausted. Starting PONG.\n");
                 char PONG_URL[1024];
                 snprintf(PONG_URL, sizeof(PONG_URL), "%s&closing_pp_id=%d", PING_URL, delay_id);
+                debug_printf("PONG: URL: %s\n", PONG_URL);
+                response_text[0] = '\0'; // Reset the buffer
                 curl_easy_setopt(curl, CURLOPT_URL, PONG_URL);
                 res = curl_easy_perform(curl);
                 if (res != CURLE_OK) {
-                    PP_DEBUG_PRINT(("PONG: curl_easy_perform() failed: %s\n", curl_easy_strerror(res)));
+                    debug_printf("PONG: curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
                 } else {
                     // Process the response
-                    PP_DEBUG_PRINT(("PONG: Response: %s\n", response_text));
+                    debug_printf("PONG: Response: %s\n", response_text);
                 }
             }
         }
