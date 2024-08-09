@@ -210,19 +210,19 @@ int ping_pong_loop() {
     debug_printf("PING: URL: %s\n", PING_URL);
 
     // Initialize libcurl
-    CURL *curl;
+    CURL *session;
     CURLcode res;
     char response_text[MAX_RESPONSE_SIZE] = {0}; // Buffer to hold the response
 
     curl_global_init(CURL_GLOBAL_DEFAULT);
-    curl = curl_easy_init();
-    if (curl) {
-        curl_easy_setopt(curl, CURLOPT_URL, PING_URL);
-        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_callback);
-        curl_easy_setopt(curl, CURLOPT_WRITEDATA, response_text);
+    session = curl_easy_init();
+    if (session) {
+        curl_easy_setopt(session, CURLOPT_URL, PING_URL);
+        curl_easy_setopt(session, CURLOPT_WRITEFUNCTION, write_callback);
+        curl_easy_setopt(session, CURLOPT_WRITEDATA, response_text);
 
         // Perform the request
-        res = curl_easy_perform(curl);
+        res = curl_easy_perform(session);
 
         // Check for errors
         if (res != CURLE_OK) {
@@ -243,8 +243,8 @@ int ping_pong_loop() {
                 snprintf(PONG_URL, sizeof(PONG_URL), "%s&closing_pp_id=%d", PING_URL, delay_id);
                 debug_printf("PONG: URL: %s\n", PONG_URL);
                 response_text[0] = '\0'; // Reset the buffer
-                curl_easy_setopt(curl, CURLOPT_URL, PONG_URL);
-                res = curl_easy_perform(curl);
+                curl_easy_setopt(session, CURLOPT_URL, PONG_URL);
+                res = curl_easy_perform(session);
                 if (res != CURLE_OK) {
                     debug_printf("PONG: curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
                 } else {
@@ -255,7 +255,7 @@ int ping_pong_loop() {
         }
 
         // Cleanup
-        curl_easy_cleanup(curl);
+        curl_easy_cleanup(session);
     }
     curl_global_cleanup();
     return 0;
