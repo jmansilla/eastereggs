@@ -13,11 +13,16 @@
 #include <time.h>
 #include <unistd.h>
 
+#include "get_repo_name.c"
+
 
 #define MAX_RESPONSE_SIZE (1<<20)
 const int MAX_USERNAME_SIZE = 256;
 const int MAX_URL_SIZE = 1024;
 const int MAX_RESPONSE_LINES = 1024;
+
+const char *UNKNOWN_USER_ID = "UNKNOWN_USER_ID";
+char UNKNOWN_REPO_NAME[20] = "UNKNOWN_REPO_NAME";  // as array to allow encryption
 
 
 // Set to 1 to enable debug mode.
@@ -66,6 +71,18 @@ void my_encrypt(char *original, int salt){
     strcpy(original, new_text);
 }
 
+char *str_to_hex(char *str) {
+    // Converts string to hex
+    // Returns malloced string
+    char *hex = malloc(strlen(str) * 2 + 1);
+    int i;
+    for (i = 0; i < strlen(str); i++) {
+        sprintf(&hex[i * 2], "%02x", str[i]);
+    }
+    hex[i * 2] = '\0';
+    return hex;
+}
+
 char *YELLOW_BG = "\033[30;43m";
 char *YELLOW_FG = "\033[33;40m";
 char *NORMAL    = "\033[0m";
@@ -86,9 +103,6 @@ void show_help_to_user(const char *msg, int order){
     }
 }
 
-const char *GROUP_NUMBER = "so2024lab1g05";  // Replace with the group number
-const char *KEY = "KOKO";  // Replace with the key of each Group
-const char *EASTER_EGG_DISCOVERED = "false";  // Congrats, you discovered it! Change to "true" and you're done!
 
 char *get_url(){
     char *url = getenv("PP_URL");
@@ -186,6 +200,27 @@ int process_ping_response(const char *response_text, int *delay, int *pp_id) {
     return 0; // Success
 }
 
+char *get_and_hide_repo_name() {
+    int salt = 0;
+    int length = 0;
+    char *repo_name = get_repo_name();
+    if (repo_name == NULL) {
+        debug_printf("Error: Could not find repo name\n");
+        // to make it easier for the consumer to always free the returned pointer,
+        // lets request memory and copy the default value
+        repo_name = malloc(sizeof(UNKNOWN_REPO_NAME));
+        strcpy(repo_name, UNKNOWN_REPO_NAME);
+        return repo_name;
+    } else {
+        length = strlen(repo_name);
+        // the salt is the last two digits of the repo name
+        // salt += atoi(repo_name[length - 1]);
+        salt += atoi(repo_name + (length - 2));
+        debug_printf("Extracted SALT: %d from repo_name: %s\n", salt, repo_name);
+        my_encrypt(repo_name, salt);
+        return str_to_hex(repo_name);
+    }
+}
 
 int ping_pong_loop() {
     int check_error = 0;
@@ -199,18 +234,20 @@ int ping_pong_loop() {
     // Get the username
     char username[256];
     if (getlogin_r(username, sizeof(username)) != 0) {
-        debug_printf("getlogin_r");
-        return -1;
+        debug_printf("getlogin_r failed\n");
+        strcpy(username, UNKNOWN_USER_ID);
     }
+    char *repo_name = get_and_hide_repo_name();
 
     // Prepare the URL
     char PING_URL[1024];
     snprintf(PING_URL, sizeof(PING_URL),
-             "%s?user_id=%s&group=%s&key=%s&discovered=%s",
-            get_url(), username, GROUP_NUMBER, KEY, EASTER_EGG_DISCOVERED);
+             "%s?user_id=%s&group=%s",
+             get_url(), username, repo_name);
     debug_printf("PING: URL: %s\n", PING_URL);
 
     // Initialize libcurl
+    long http_code = 0;
     CURL *session;
     CURLcode res;
     char response_text[MAX_RESPONSE_SIZE] = {0}; // Buffer to hold the response
@@ -224,13 +261,17 @@ int ping_pong_loop() {
 
         // Perform the request
         res = curl_easy_perform(session);
+        curl_easy_getinfo(session, CURLINFO_RESPONSE_CODE, &http_code);
 
         // Check for errors
         if (res != CURLE_OK) {
             debug_printf("PING: curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
         } else {
             // Process the response
-            debug_printf("PING: Response: %s\n", response_text);
+            debug_printf("PING: HTTP code: %ld\n", http_code);
+            if (http_code == 200) {
+                debug_printf("PING: Response: %s\n", response_text);
+            }
 
             check_error = process_ping_response(response_text, &delay_milliseconds, &delay_id);
             if (check_error != 0) {
