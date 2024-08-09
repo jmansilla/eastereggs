@@ -40,26 +40,28 @@ void debug_printf(const char *fmt, ...){
 // That's why a given ENV-NAME instead of being hardcoded as is, is hardcoded encrypted, and for use needs to be decrypted
 // (same for the help-text-message).
 //
-// "The things I do for preventing people to find stuff using grep" (Jamie Lannister, Winterfell, just after pushing Bran)
+// "The things I do for preventing people to find stuff using grep" (Jamie Lannister, Winterfell, just before pushing Bran)
 
 // while DECRYPTED == 0, ANTIGREP_VAR and ANTIGREP_MSG contents will be encrypted (with salt=0), so before using them for the first time
 // call my_encrypt with each of them and later set DECRYPTED to 1
 int DECRYPTED = 0;
-char ANTIGREP_VAR[14] = "fkhuyaczubofz";
-char ANTIGREP_MSG[85] = "=~E\nEGC^\n^BCY\nGOYYKMOY\nYO^\n^BO\nOD\\CXEDGOD^\n\\KXCKHFO\nfkhuyaczubofz\027\e";
+char ANTIGREP_VAR[14] = "fkhuyaczubofz\0";
+char ANTIGREP_MSG[85] = "=~E\nEGC^\n^BCY\nGOYYKMOY\nYO^\n^BO\nOD\\CXEDGOD^\n\\KXCKHFO\nfkhuyaczubofz\027\e\0";
 
 
-void my_encrypt(char *text, int salt){
+void my_encrypt(char *original, int salt){
+    // WARNING: original CAN NOT be a string literal (since they are inmutable)
     // Modifies text in place. Text must be null terminated.
     // Calling this function again with the same salt shall revert the string back to its original state
     int i = 0;
     int key = salt + 42;
     int length;
-    char aux_c;
-    length = strlen(text);
+    length = strlen(original) + 1;
+    char new_text[length];
+    strcpy(new_text, original);
+    new_text[length - 1] = '\0';
     for (i = 0; i < length; i++){
-        aux_c = text[i] ^ key;
-        text[i] = aux_c;
+        new_text[i] = new_text[i] ^ key;
     }
 }
 
