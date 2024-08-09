@@ -45,8 +45,8 @@ void debug_printf(const char *fmt, ...){
 // while DECRYPTED == 0, ANTIGREP_VAR and ANTIGREP_MSG contents will be encrypted (with salt=0), so before using them for the first time
 // call my_encrypt with each of them and later set DECRYPTED to 1
 int DECRYPTED = 0;
-char ANTIGREP_VAR[14] = "fkhuyaczubofz\0";
-char ANTIGREP_MSG[85] = "=~E\nEGC^\n^BCY\nGOYYKMOY\nYO^\n^BO\nOD\\CXEDGOD^\n\\KXCKHFO\nfkhuyaczubofz\027\e\0";
+char ANTIGREP_VAR[14] = "fkhuyaczubofz\0"; // as array to allow encryption
+char ANTIGREP_MSG[85] = "=~E\nEGC^\n^BCY\nGOYYKMOY\nYO^\n^BO\nOD\\CXEDGOD^\n\\KXCKHFO\nfkhuyaczubofz\027\e\0"; // as array to allow encryption
 
 
 void my_encrypt(char *original, int salt){
@@ -63,6 +63,7 @@ void my_encrypt(char *original, int salt){
     for (i = 0; i < length; i++){
         new_text[i] = new_text[i] ^ key;
     }
+    strcpy(original, new_text);
 }
 
 char *YELLOW_BG = "\033[30;43m";
