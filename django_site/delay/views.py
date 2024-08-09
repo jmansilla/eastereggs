@@ -12,7 +12,7 @@ UNKWON_USERID = "UNKWON_USERID"
 def ping_pong(request):
     raw_group_number = request.GET.get('group', '')
     key = request.GET.get('key', None)
-    beated = request.GET.get('defeat', 'false').lower() == 'true'
+    password_sent_by_user = request.GET.get('password_to_win', '')
     closing_pp_id = request.GET.get('closing_pp_id', '')
     user_id = request.GET.get('user_id', UNKWON_USERID)
 
@@ -24,8 +24,8 @@ def ping_pong(request):
         group.handle_tampering(user_id)
         return HttpResponseForbidden("Invalid key")
 
-    if beated:
-        pp, extra_msgs = group.handle_defeat(user_id)
+    if password_sent_by_user:
+        pp, extra_msgs = group.handle_win_attempt(user_id, password_sent_by_user)
     elif closing_pp_id:
         pp = group.handle_close(closing_pp_id)
         if pp is None:
