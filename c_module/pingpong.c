@@ -14,13 +14,13 @@
 #include <unistd.h>
 
 
-const int MAX_RESPONSE_SIZE = 1<<20;
+#define MAX_RESPONSE_SIZE (1<<20)
 const int MAX_USERNAME_SIZE = 256;
 const int MAX_URL_SIZE = 1024;
 const int MAX_RESPONSE_LINES = 1024;
 
 
-// Set to 1 to enable debug mode. 
+// Set to 1 to enable debug mode.
 // May be overridden by setting environment variable PP_DEBUG=1
 int DEBUG = 0;
 
@@ -87,7 +87,13 @@ const char *GROUP_NUMBER = "so2024lab1g05";  // Replace with the group number
 const char *KEY = "KOKO";  // Replace with the key of each Group
 const char *EASTER_EGG_DISCOVERED = "false";  // Congrats, you discovered it! Change to "true" and you're done!
 
-const char *BASE_URL = "http://localhost:8000/delay/ping_pong";
+char *get_url(){
+    char *url = getenv("PP_URL");
+    if (url == NULL){
+        return "http://localhost:8000/delay/ping_pong";
+    }
+    return url;
+}
 
 // FIXME: Make it possible to disable the easter egg with ENV variables
 
@@ -198,7 +204,7 @@ int ping_pong_loop() {
     char PING_URL[1024];
     snprintf(PING_URL, sizeof(PING_URL),
              "%s?user_id=%s&group=%s&key=%s&discovered=%s",
-            BASE_URL, username, GROUP_NUMBER, KEY, EASTER_EGG_DISCOVERED);
+            get_url(), username, GROUP_NUMBER, KEY, EASTER_EGG_DISCOVERED);
     debug_printf("PING: URL: %s\n", PING_URL);
 
     // Initialize libcurl

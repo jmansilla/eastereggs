@@ -53,6 +53,10 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = 'eeggs_site.urls'
 
+CSRF_TRUSTED_ORIGINS = [
+    "https://clever-dane-infinitely.ngrok-free.app"  # mteruel ngrok server
+]
+
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
