@@ -39,7 +39,6 @@ in the django server, or you'll get a CSRF verification failed error.
 
 ## Launch django server
 
-
 If it's the first time you run it (and after altering models in the db), run
 
 ```
@@ -57,6 +56,18 @@ To access the admin, if don't have the credentials run
 python manage.py createsuperuser
 ```
 
+### Load groups
+
+To add groups to the database, you can use the command
+
+```
+python manage.py load_groups <input_filepath>
+```
+
+The file is expected to be in csv format with string columns group_number, group_name, and secret_key. The group number is intended to be just a number (may start with 0). The key validates the identity of the group and
+should be hardcoded in their repository.
+
+
 ## Run pingpong
 
 Compile the module using:
@@ -68,7 +79,6 @@ Then execute with specific env variables
 ```
 PP_URL="http://localhost:2906/delay/ping_pong" PP_DEBUG=1 ./pingpong
 ```
-
 
 ### Handlers
 
