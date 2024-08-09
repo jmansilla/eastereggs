@@ -25,7 +25,7 @@ def generate_password():
     return f'{color}{animal}'
 
 
-def encrypt(text, salt):
+def encrypt(text, salt=0):
     key = 42 + salt
     new_text = [
         chr(ord(c) ^ key) for c in text
