@@ -86,3 +86,21 @@ There are three possible actions for groups that we are recording:
 - Defeat: they solved the puzzle
 - Close:
 - Tampering: Records if the ping was tampered with wrong key
+
+
+### Dashboard
+
+The app dashboards tries to show an aggregate of group stats. It needs serious UI improvements and more charts.
+
+To access it, go to
+
+```
+http://localhost:2906/dashboards/dashboard/maindashboard/
+```
+
+TODOs:
+* Add key to URL for authentication
+* You have to load the page twice to see the table because of some error: `Pagination may yield inconsistent results with an unordered object_list: <class 'delay.models.SOGroup'> QuerySet.`
+* See when groups have cracked the bug
+* See pingpongs per group, filter by tampering attempts
+* See pingpongs per group and per user, filter by tampering attempts

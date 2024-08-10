@@ -20,4 +20,5 @@ from django.urls import include, path
 urlpatterns = [
     path("delay/", include("delay.urls")),
     path("admin/", admin.site.urls),
+    path('dashboards/', include('dashboards.urls')),
 ]
