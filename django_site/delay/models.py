@@ -118,7 +118,7 @@ class PingPong(models.Model):
     user_id = models.CharField(max_length=100, help_text="User-Id of whom initiated the ping")
     closed = models.BooleanField(default=False, help_text="True if the ping was closed (ie, it awaited the delay and closed it)")
     closed_timestamp = models.DateTimeField(default=None, null=True, blank=True, help_text="Leave Empty. It'll be filled when the ping was closed")
-    tampering_attemp = models.BooleanField(default=False, help_text="True if the ping was tampered with wrong key")
+    tampering_attempt = models.BooleanField(default=False, help_text="True if the ping was tampered with wrong key")
 
 
 class Deadline(models.Model):
