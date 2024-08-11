@@ -8,6 +8,7 @@ class DeadlineAdmin(admin.ModelAdmin):
 
 class SOGroupAdmin(admin.ModelAdmin):
     readonly_fields=('password_to_win', 'challenge_won', 'challenge_won_timestamp', 'wasted_time')
+    list_display = ('repo_name', 'group_name', 'challenge_won', 'challenge_won_timestamp', 'wasted_time', )
 
 admin.site.register(SOGroup, SOGroupAdmin)
 admin.site.register(PingPong)
