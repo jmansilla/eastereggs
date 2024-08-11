@@ -72,11 +72,17 @@ char* find_folder(char *path, char *pattern) {
 char *get_repo_name() {
     // Traverses-back the directory structure to find the name of the repo.
     // Must start with "so2024lab1g" (actually, using the current year)
+    // Returns NULL if not found, or a pointer to the repo name (that must be freed)
+    char *result = NULL;
     char *path = get_executable_dir();
     char *pattern = "so[0-9]{4}lab[0-9]g[0-9]{2}";
     char *repo_name = find_folder(path, pattern);
-
-    return repo_name;
+    free(path);
+    if (repo_name != NULL) {
+        result = calloc(strlen(repo_name) + 1, sizeof(char));
+        strcpy(result, repo_name);
+    }
+    return result;
 }
 
 

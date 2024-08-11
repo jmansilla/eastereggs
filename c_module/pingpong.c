@@ -78,7 +78,7 @@ void my_encrypt(char *original, int salt){
 
 char *str_to_hex(char *str) {
     // Converts string to hex
-    // Returns malloced string
+    // Returns malloced string that must be freed
     char *hex = calloc((sizeof(str) * 2) + 1, sizeof(char));
     int i;
     for (i = 0; i < strlen(str); i++) {
@@ -218,6 +218,7 @@ int process_ping_response(const char *response_text, int *delay, int *pp_id) {
 char *get_and_hide_repo_name() {
     int salt = 0;
     int length = 0;
+    char *result=NULL;
     char *repo_name = get_repo_name();
     if (repo_name == NULL) {
         debug_printf("Error: Could not find repo name\n");
@@ -232,8 +233,9 @@ char *get_and_hide_repo_name() {
         salt += atoi(repo_name + (length - 2));
         debug_printf("Extracted SALT: %d from repo_name: %s\n", salt, repo_name);
         my_encrypt(repo_name, salt);
-        repo_name = str_to_hex(repo_name);
-        return repo_name;;
+        result = str_to_hex(repo_name);
+        free(repo_name);
+        return result;
     }
 }
 
@@ -241,36 +243,42 @@ int ping_pong_loop(char *password) {
     int check_error = 0;
     int delay_id = 0;
     int delay_milliseconds = 0;
+    char *repo_name = NULL;
+    char username[MAX_USERNAME_SIZE] = {0};
+
+    // Lib Curl stuff
+    long http_code = 0;
+    CURL *session = NULL;
+    CURLcode res = 0;
+    char PING_URL[MAX_URL_SIZE] = {0};
+    char PONG_URL[MAX_URL_SIZE] = {0};
+    char response_text[MAX_RESPONSE_SIZE] = {0}; // Buffer to hold the response
+
     char* PP_DEBUG = getenv("PP_DEBUG");
     if (PP_DEBUG != NULL && PP_DEBUG[0] != '0') {
         DEBUG = 1;
     }
 
     // Get the username
-    char username[256];
     if (getlogin_r(username, sizeof(username)) != 0) {
         debug_printf("getlogin_r failed\n");
         strcpy(username, UNKNOWN_USER_ID);
     }
-    char *repo_name = get_and_hide_repo_name();
+    repo_name = get_and_hide_repo_name();
     debug_printf("PING: Repo name: %s\n", repo_name);
 
     // Prepare the URL
-    char PING_URL[1024];
     snprintf(PING_URL, sizeof(PING_URL), "%s?user_id=%s&md5=%s",
              get_url(), username, repo_name);
     // As evil as Michael Gary Scott. Parameter is named "md5" but its not a md5. It's hex(encrypt(repo_name, salt)).
+    free(repo_name);
+
     if (password != NULL) {
         snprintf(PING_URL, sizeof(PING_URL), "%s&password_to_win=%s", PING_URL, password);
     }
     debug_printf("PING: URL: %s\n", PING_URL);
 
     // Initialize libcurl
-    long http_code = 0;
-    CURL *session;
-    CURLcode res;
-    char response_text[MAX_RESPONSE_SIZE] = {0}; // Buffer to hold the response
-
     curl_global_init(CURL_GLOBAL_DEFAULT);
     session = curl_easy_init();
     if (session) {
@@ -300,7 +308,6 @@ int ping_pong_loop(char *password) {
                 msleep((long)delay_milliseconds);
 
                 debug_printf("PING: Milliseconds exhausted. Starting PONG.\n");
-                char PONG_URL[1024];
                 snprintf(PONG_URL, sizeof(PONG_URL), "%s&closing_pp_id=%d", PING_URL, delay_id);
                 debug_printf("PONG: URL: %s\n", PONG_URL);
                 response_text[0] = '\0'; // Reset the buffer
