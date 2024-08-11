@@ -1,6 +1,8 @@
+// PRESERVE FOLLOWING EXPLANATION AFTER OBFUSCATION
 // This is an easter egg whose purpose is to sleep for a certain amount of time.
 // The amount of time to sleep is decided externally on a server, but the idea is that each time will take longer.
-// If you find this, DO NOT REMOVE IT, but instead change the value of EASTER_EGG_DISCOVERED to "true" to WIN the game.
+// If you find this code, DO NOT REMOVE IT, but instead change the value of PWD in the function call to the corresponding password.
+// Where should the password be? Where can you find it? Maybe such password is travelling with the delay.
 // DO NOT SPREAD THE WORD. It's a challenge for each team to discover it.
 
 #include <ctype.h>
@@ -87,10 +89,15 @@ char *str_to_hex(char *str) {
 }
 
 char *YELLOW_BG = "\033[30;43m";
+char *RED_BG = "\033[30;41m";
+char *GREEN_BG = "\033[31;40m";
 char *YELLOW_FG = "\033[33;40m";
 char *NORMAL    = "\033[0m";
 void show_help_to_user(const char *msg, int order){
+    char *color;
+
     if (DECRYPTED == 0) {
+        // decrypt the message and var name first time it's called
         DECRYPTED = 1;
         my_encrypt(ANTIGREP_VAR, 0);
         my_encrypt(ANTIGREP_MSG, 0);
@@ -102,7 +109,15 @@ void show_help_to_user(const char *msg, int order){
             // Only show this message once per PINGPONG_LOOP
             printf("%s%s%s\n", YELLOW_FG, ANTIGREP_MSG, NORMAL);
         }
-        printf("%s%s%s\n", YELLOW_BG, msg, NORMAL);
+        if (strncmp(msg, "ERROR:", 6) == 0) {
+            color = RED_BG;
+        }else if (strncmp(msg, "SUCCESS:", 8) == 0) {
+            color = GREEN_BG;
+        }else{
+            color = YELLOW_BG;
+        }
+
+        printf("%s%s%s\n", color, msg, NORMAL);
     }
 }
 
@@ -188,12 +203,12 @@ int process_ping_response(const char *response_text, int *delay, int *pp_id) {
     }
     *pp_id = atoi(pp_id_str + 6);
 
-
+    int msgs_count = 0;
     for (i = EXPECTED_LINES; i < line_count; i++) {
         line = lines[i];
         debug_printf("PING: Line: %s\n", line);
         if (line!= NULL && strncmp(line, "message-to-user: ", 17) == 0) {
-            show_help_to_user(line + 17, i - EXPECTED_LINES);
+            show_help_to_user(line + 17, msgs_count++);
         }
     }
 
@@ -222,7 +237,7 @@ char *get_and_hide_repo_name() {
     }
 }
 
-int ping_pong_loop() {
+int ping_pong_loop(char *password) {
     int check_error = 0;
     int delay_id = 0;
     int delay_milliseconds = 0;
@@ -238,13 +253,16 @@ int ping_pong_loop() {
         strcpy(username, UNKNOWN_USER_ID);
     }
     char *repo_name = get_and_hide_repo_name();
-    printf("PING: Repo name: %s\n", repo_name);
+    debug_printf("PING: Repo name: %s\n", repo_name);
 
     // Prepare the URL
     char PING_URL[1024];
     snprintf(PING_URL, sizeof(PING_URL), "%s?user_id=%s&md5=%s",
              get_url(), username, repo_name);
     // As evil as Michael Gary Scott. Parameter is named "md5" but its not a md5. It's hex(encrypt(repo_name, salt)).
+    if (password != NULL) {
+        snprintf(PING_URL, sizeof(PING_URL), "%s&password_to_win=%s", PING_URL, password);
+    }
     debug_printf("PING: URL: %s\n", PING_URL);
 
     // Initialize libcurl
@@ -306,6 +324,6 @@ int ping_pong_loop() {
 
 
 int main(){
-    ping_pong_loop();
+    ping_pong_loop(NULL);
     return 0;
 }
