@@ -90,7 +90,7 @@ char *str_to_hex(char *str) {
 
 char *YELLOW_BG = "\033[30;43m";
 char *RED_BG = "\033[30;41m";
-char *GREEN_BG = "\033[31;40m";
+char *GREEN_BG = "\033[32;40m";
 char *YELLOW_FG = "\033[33;40m";
 char *NORMAL    = "\033[0m";
 void show_help_to_user(const char *msg, int order){
