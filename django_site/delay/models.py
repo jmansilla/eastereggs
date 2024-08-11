@@ -56,7 +56,7 @@ class SOGroup(models.Model):
         msg = ""
         if self.challenge_won:  # was already won. Just return delay 0 and consider it closed
             pp = PingPong.objects.create(group=self, user_id=user_id, delay_recommended=0, was_closed=True)
-            msg += self._build_message_to_user(f"Congratulations. Challenge won at {self.challenge_won_timestamp}. No more delays.")
+            msg += self._build_message_to_user(f"SUCCESS:Congratulations. Challenge won at {self.challenge_won_timestamp}. No more delays.")
         else:
             pp = PingPong.objects.create(group=self, user_id=user_id, delay_recommended=self.current_delay, tampering_attempt=tampered)
             if self.current_delay <= self.delay_roof:
@@ -75,7 +75,7 @@ class SOGroup(models.Model):
                 msg += f"{extra_msgs}\n"
 
             if pp.tampering_attempt:
-                msg += self._build_message_to_user("Wrong password. You have been penalized")
+                msg += self._build_message_to_user("ERROR: Wrong password. You have been penalized")
 
         return pp, msg
 
