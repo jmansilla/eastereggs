@@ -55,8 +55,8 @@ class SOGroup(models.Model):
     def handle_ping(self, user_id, tampered=False):
         msg = ""
         if self.challenge_won:  # was already won. Just return delay 0 and consider it closed
-            pp = PingPong.objects.create(group=self, user_id=user_id, delay_recommended=0, was_closed=True)
-            msg += self._build_message_to_user(f"SUCCESS:Congratulations. Challenge won at {self.challenge_won_timestamp}. No more delays.")
+            pp = PingPong.objects.create(group=self, user_id=user_id, delay_recommended=0, closed=True)
+            msg += self._build_message_to_user(f"SUCCESS: Congratulations. Challenge won at {self.challenge_won_timestamp}. No more delays.")
         else:
             pp = PingPong.objects.create(group=self, user_id=user_id, delay_recommended=self.current_delay, tampering_attempt=tampered)
             if self.current_delay <= self.delay_roof:
