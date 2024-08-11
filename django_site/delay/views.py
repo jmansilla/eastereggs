@@ -5,32 +5,56 @@ from django.shortcuts import get_object_or_404, render
 from django.utils import timezone
 
 from .models import SOGroup, Deadline
+from .generate_password import encrypt
 
+YEAR = 2024
+PREFIX = f"so{YEAR}lab"
 
-UNKWON_USERID = "UNKWON_USERID"
+UNKWON_USERID = "UNKNOWN_USER_ID"
+
+def decrypt_group_name(crypted_repo_name):
+    # In the client side, the group name suffered the following transformation:
+    # Suppose it's name = "so2024lab1g05"
+    # It's encrypted with encrypt("so2024lab1g05", salt=5)  where salt number is the group number
+    # An later it's represented as hex
+    # We need to revert such transformation
+    length = len(crypted_repo_name)
+    if length % 2 != 0:
+        return None
+    de_hex_bits = []
+    for i in range(0, length, 2):
+        hbit = crypted_repo_name[i: i+2]
+        de_hex_bits.append(chr(int(hbit, 16)))
+    ascii = ''.join(de_hex_bits)
+
+    for salt in range(51):
+        decrypted = encrypt(ascii, salt)
+        if decrypted.startswith(PREFIX):
+            return decrypted
+    return None
+
 
 def ping_pong(request):
-    raw_group_number = request.GET.get('group', '')
-    key = request.GET.get('key', None)
+    crypted_repo_name = request.GET.get('md5', '')  # parameter is named "md5" to confuse students. It's not a md5
     password_sent_by_user = request.GET.get('password_to_win', '')
     closing_pp_id = request.GET.get('closing_pp_id', '')
     user_id = request.GET.get('user_id', UNKWON_USERID)
 
-    prefix = "so2024lab1g"
-    if not raw_group_number.startswith(prefix):
-        raise Http404("Invalid group number")
-    group = get_object_or_404(SOGroup, group_number=raw_group_number[len(prefix):])
-    if group.secret_key != key:
-        group.handle_tampering(user_id)
-        return HttpResponseForbidden("Invalid key")
+    print('Received ping-pong %s, %s, %s, %s' % (crypted_repo_name, password_sent_by_user, closing_pp_id, user_id))
+    repo_name = decrypt_group_name(crypted_repo_name)
+    print('Repo name: %s' % repo_name)
 
-    if password_sent_by_user:
-        pp, extra_msgs = group.handle_win_attempt(user_id, password_sent_by_user)
-    elif closing_pp_id:
+    group = get_object_or_404(SOGroup, repo_name=repo_name)
+
+    if closing_pp_id:
         pp = group.handle_close(closing_pp_id)
         if pp is None:
             raise Http404("Invalid close id")
         extra_msgs = "closed\n"
+    elif password_sent_by_user:
+        # if password is correct, challenge won, and no more delays.
+        # Otherwise, kind of normal-ping is created (with delay) and marked as tampering attempt.
+        pp, extra_msgs = group.handle_win_attempt(user_id, password_sent_by_user)
     else:
         # Opening a Ping-Pong loop.
         pp, extra_msgs = group.handle_ping(user_id)
