@@ -40,9 +40,7 @@ def ping_pong(request):
     closing_pp_id = request.GET.get('closing_pp_id', '')
     user_id = request.GET.get('user_id', UNKWON_USERID)
 
-    print('Received ping-pong %s, %s, %s, %s' % (crypted_repo_name, password_sent_by_user, closing_pp_id, user_id))
     repo_name = decrypt_group_name(crypted_repo_name)
-    print('Repo name: %s' % repo_name)
 
     group = get_object_or_404(SOGroup, repo_name=repo_name)
 
