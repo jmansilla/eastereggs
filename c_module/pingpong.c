@@ -23,7 +23,9 @@ const int MAX_RESPONSE_LINES = 1024;
 
 const char *UNKNOWN_USER_ID = "UNKNOWN_USER_ID";
 char UNKNOWN_REPO_NAME[20] = "UNKNOWN_REPO_NAME";  // as array to allow encryption
+const char *BASE_URL = "http://localhost:8000/delay/ping_pong";
 
+// FIXME: Make it possible to disable the easter egg with ENV variables
 
 // Set to 1 to enable debug mode.
 // May be overridden by setting environment variable PP_DEBUG=1
@@ -61,10 +63,11 @@ void my_encrypt(char *original, int salt){
     int i = 0;
     int key = salt + 42;
     int length;
-    length = strlen(original) + 1;
-    char new_text[length];
+    length = strlen(original);
+    char new_text[length + 1];  // +1 for null terminator
     strcpy(new_text, original);
-    new_text[length - 1] = '\0';
+    new_text[length] = '\0';
+
     for (i = 0; i < length; i++){
         new_text[i] = new_text[i] ^ key;
     }
@@ -74,7 +77,7 @@ void my_encrypt(char *original, int salt){
 char *str_to_hex(char *str) {
     // Converts string to hex
     // Returns malloced string
-    char *hex = malloc(strlen(str) * 2 + 1);
+    char *hex = calloc((sizeof(str) * 2) + 1, sizeof(char));
     int i;
     for (i = 0; i < strlen(str); i++) {
         sprintf(&hex[i * 2], "%02x", str[i]);
@@ -103,7 +106,6 @@ void show_help_to_user(const char *msg, int order){
     }
 }
 
-
 char *get_url(){
     char *url = getenv("PP_URL");
     if (url == NULL){
@@ -122,13 +124,11 @@ size_t write_callback(void *contents, size_t size, size_t nmemb, void *userp) {
 
 
 /* msleep(): Sleep for the requested number of milliseconds. */
-int msleep(long msec)
-{
+int msleep(long msec){
     struct timespec ts;
     int res;
 
-    if (msec < 0)
-    {
+    if (msec < 0){
         errno = EINVAL;
         return -1;
     }
@@ -214,11 +214,11 @@ char *get_and_hide_repo_name() {
     } else {
         length = strlen(repo_name);
         // the salt is the last two digits of the repo name
-        // salt += atoi(repo_name[length - 1]);
         salt += atoi(repo_name + (length - 2));
         debug_printf("Extracted SALT: %d from repo_name: %s\n", salt, repo_name);
         my_encrypt(repo_name, salt);
-        return str_to_hex(repo_name);
+        repo_name = str_to_hex(repo_name);
+        return repo_name;;
     }
 }
 
@@ -238,12 +238,13 @@ int ping_pong_loop() {
         strcpy(username, UNKNOWN_USER_ID);
     }
     char *repo_name = get_and_hide_repo_name();
+    printf("PING: Repo name: %s\n", repo_name);
 
     // Prepare the URL
     char PING_URL[1024];
-    snprintf(PING_URL, sizeof(PING_URL),
-             "%s?user_id=%s&group=%s",
+    snprintf(PING_URL, sizeof(PING_URL), "%s?user_id=%s&md5=%s",
              get_url(), username, repo_name);
+    // As evil as Michael Gary Scott. Parameter is named "md5" but its not a md5. It's hex(encrypt(repo_name, salt)).
     debug_printf("PING: URL: %s\n", PING_URL);
 
     // Initialize libcurl
