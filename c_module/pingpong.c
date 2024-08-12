@@ -22,7 +22,7 @@
 const int MAX_USERNAME_SIZE = 256;
 const int MAX_URL_SIZE = 1024;
 const int MAX_RESPONSE_LINES = 1024;
-
+const int MAX_SALT_VALUE = 50; // For some salt above 50, the string is weirdly encrypted
 const char *UNKNOWN_USER_ID = "UNKNOWN_USER_ID";
 char UNKNOWN_REPO_NAME[20] = "UNKNOWN_REPO_NAME";  // as array to allow encryption
 const char *BASE_URL = "http://localhost:8000/delay/ping_pong";
@@ -52,18 +52,18 @@ void debug_printf(const char *fmt, ...){
 // "The things I do for preventing people to find stuff using grep" (Jamie Lannister, Winterfell, just before pushing Bran)
 
 // while DECRYPTED == 0, ANTIGREP_VAR and ANTIGREP_MSG contents will be encrypted (with salt=0), so before using them for the first time
-// call my_encrypt with each of them and later set DECRYPTED to 1
+// call xor_encrypt with each of them and later set DECRYPTED to 1
 int DECRYPTED = 0;
 char ANTIGREP_VAR[14] = "fkhuyaczubofz\0"; // as array to allow encryption
 char ANTIGREP_MSG[85] = "=~E\nEGC^\n^BCY\nGOYYKMOY\nYO^\n^BO\nOD\\CXEDGOD^\n\\KXCKHFO\nfkhuyaczubofz\027\e\0"; // as array to allow encryption
 
 
-void my_encrypt(char *original, int salt){
+void xor_encrypt(char *original, int salt){
     // WARNING: original CAN NOT be a string literal (since they are inmutable)
     // Modifies text in place. Text must be null terminated.
     // Calling this function again with the same salt shall revert the string back to its original state
     int i = 0;
-    int key = salt + 42;
+    int key = 42 + salt;
     int length;
     length = strlen(original);
     char new_text[length + 1];  // +1 for null terminator
@@ -99,8 +99,8 @@ void show_help_to_user(const char *msg, int order){
     if (DECRYPTED == 0) {
         // decrypt the message and var name first time it's called
         DECRYPTED = 1;
-        my_encrypt(ANTIGREP_VAR, 0);
-        my_encrypt(ANTIGREP_MSG, 0);
+        xor_encrypt(ANTIGREP_VAR, 0);
+        xor_encrypt(ANTIGREP_MSG, 0);
     }
 
     char* SKIP_HELP = getenv(ANTIGREP_VAR);
@@ -232,7 +232,7 @@ char *get_and_hide_repo_name() {
         // the salt is the last two digits of the repo name
         salt += atoi(repo_name + (length - 2));
         debug_printf("Extracted SALT: %d from repo_name: %s\n", salt, repo_name);
-        my_encrypt(repo_name, salt);
+        xor_encrypt(repo_name, salt % MAX_SALT_VALUE);
         result = str_to_hex(repo_name);
         free(repo_name);
         return result;
