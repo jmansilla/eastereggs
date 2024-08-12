@@ -1,6 +1,8 @@
+// PRESERVE FOLLOWING EXPLANATION AFTER OBFUSCATION
 // This is an easter egg whose purpose is to sleep for a certain amount of time.
 // The amount of time to sleep is decided externally on a server, but the idea is that each time will take longer.
-// If you find this, DO NOT REMOVE IT, but instead change the value of EASTER_EGG_DISCOVERED to "true" to WIN the game.
+// If you find this code, DO NOT REMOVE IT, but instead change the value of PWD in the function call to the corresponding password.
+// Where should the password be? Where can you find it? Maybe such password is travelling with the delay.
 // DO NOT SPREAD THE WORD. It's a challenge for each team to discover it.
 
 #include <ctype.h>
@@ -13,12 +15,19 @@
 #include <time.h>
 #include <unistd.h>
 
+#include "get_repo_name.c"
+
 
 #define MAX_RESPONSE_SIZE (1<<20)
 const int MAX_USERNAME_SIZE = 256;
 const int MAX_URL_SIZE = 1024;
 const int MAX_RESPONSE_LINES = 1024;
 
+const char *UNKNOWN_USER_ID = "UNKNOWN_USER_ID";
+char UNKNOWN_REPO_NAME[20] = "UNKNOWN_REPO_NAME";  // as array to allow encryption
+const char *BASE_URL = "http://localhost:8000/delay/ping_pong";
+
+// FIXME: Make it possible to disable the easter egg with ENV variables
 
 // Set to 1 to enable debug mode.
 // May be overridden by setting environment variable PP_DEBUG=1
@@ -40,34 +49,55 @@ void debug_printf(const char *fmt, ...){
 // That's why a given ENV-NAME instead of being hardcoded as is, is hardcoded encrypted, and for use needs to be decrypted
 // (same for the help-text-message).
 //
-// "The things I do for preventing people to find stuff using grep" (Jamie Lannister, Winterfell, just after pushing Bran)
+// "The things I do for preventing people to find stuff using grep" (Jamie Lannister, Winterfell, just before pushing Bran)
 
 // while DECRYPTED == 0, ANTIGREP_VAR and ANTIGREP_MSG contents will be encrypted (with salt=0), so before using them for the first time
 // call my_encrypt with each of them and later set DECRYPTED to 1
 int DECRYPTED = 0;
-char ANTIGREP_VAR[14] = "fkhuyaczubofz";
-char ANTIGREP_MSG[85] = "=~E\nEGC^\n^BCY\nGOYYKMOY\nYO^\n^BO\nOD\\CXEDGOD^\n\\KXCKHFO\nfkhuyaczubofz\027\e";
+char ANTIGREP_VAR[14] = "fkhuyaczubofz\0"; // as array to allow encryption
+char ANTIGREP_MSG[85] = "=~E\nEGC^\n^BCY\nGOYYKMOY\nYO^\n^BO\nOD\\CXEDGOD^\n\\KXCKHFO\nfkhuyaczubofz\027\e\0"; // as array to allow encryption
 
 
-void my_encrypt(char *text, int salt){
+void my_encrypt(char *original, int salt){
+    // WARNING: original CAN NOT be a string literal (since they are inmutable)
     // Modifies text in place. Text must be null terminated.
     // Calling this function again with the same salt shall revert the string back to its original state
     int i = 0;
     int key = salt + 42;
     int length;
-    char aux_c;
-    length = strlen(text);
+    length = strlen(original);
+    char new_text[length + 1];  // +1 for null terminator
+    strcpy(new_text, original);
+    new_text[length] = '\0';
+
     for (i = 0; i < length; i++){
-        aux_c = text[i] ^ key;
-        text[i] = aux_c;
+        new_text[i] = new_text[i] ^ key;
     }
+    strcpy(original, new_text);
+}
+
+char *str_to_hex(char *str) {
+    // Converts string to hex
+    // Returns malloced string that must be freed
+    char *hex = calloc((sizeof(str) * 2) + 1, sizeof(char));
+    int i;
+    for (i = 0; i < strlen(str); i++) {
+        sprintf(&hex[i * 2], "%02x", str[i]);
+    }
+    hex[i * 2] = '\0';
+    return hex;
 }
 
 char *YELLOW_BG = "\033[30;43m";
+char *RED_BG = "\033[30;41m";
+char *GREEN_BG = "\033[32;40m";
 char *YELLOW_FG = "\033[33;40m";
 char *NORMAL    = "\033[0m";
 void show_help_to_user(const char *msg, int order){
+    char *color;
+
     if (DECRYPTED == 0) {
+        // decrypt the message and var name first time it's called
         DECRYPTED = 1;
         my_encrypt(ANTIGREP_VAR, 0);
         my_encrypt(ANTIGREP_MSG, 0);
@@ -79,13 +109,17 @@ void show_help_to_user(const char *msg, int order){
             // Only show this message once per PINGPONG_LOOP
             printf("%s%s%s\n", YELLOW_FG, ANTIGREP_MSG, NORMAL);
         }
-        printf("%s%s%s\n", YELLOW_BG, msg, NORMAL);
+        if (strncmp(msg, "ERROR:", 6) == 0) {
+            color = RED_BG;
+        }else if (strncmp(msg, "SUCCESS:", 8) == 0) {
+            color = GREEN_BG;
+        }else{
+            color = YELLOW_BG;
+        }
+
+        printf("%s%s%s\n", color, msg, NORMAL);
     }
 }
-
-const char *GROUP_NUMBER = "so2024lab1g05";  // Replace with the group number
-const char *KEY = "KOKO";  // Replace with the key of each Group
-const char *EASTER_EGG_DISCOVERED = "false";  // Congrats, you discovered it! Change to "true" and you're done!
 
 char *get_url(){
     char *url = getenv("PP_URL");
@@ -105,13 +139,11 @@ size_t write_callback(void *contents, size_t size, size_t nmemb, void *userp) {
 
 
 /* msleep(): Sleep for the requested number of milliseconds. */
-int msleep(long msec)
-{
+int msleep(long msec){
     struct timespec ts;
     int res;
 
-    if (msec < 0)
-    {
+    if (msec < 0){
         errno = EINVAL;
         return -1;
     }
@@ -171,63 +203,102 @@ int process_ping_response(const char *response_text, int *delay, int *pp_id) {
     }
     *pp_id = atoi(pp_id_str + 6);
 
-
+    int msgs_count = 0;
     for (i = EXPECTED_LINES; i < line_count; i++) {
         line = lines[i];
         debug_printf("PING: Line: %s\n", line);
         if (line!= NULL && strncmp(line, "message-to-user: ", 17) == 0) {
-            show_help_to_user(line + 17, i - EXPECTED_LINES);
+            show_help_to_user(line + 17, msgs_count++);
         }
     }
 
     return 0; // Success
 }
 
+char *get_and_hide_repo_name() {
+    int salt = 0;
+    int length = 0;
+    char *result=NULL;
+    char *repo_name = get_repo_name();
+    if (repo_name == NULL) {
+        debug_printf("Error: Could not find repo name\n");
+        // to make it easier for the consumer to always free the returned pointer,
+        // lets request memory and copy the default value
+        repo_name = malloc(sizeof(UNKNOWN_REPO_NAME));
+        strcpy(repo_name, UNKNOWN_REPO_NAME);
+        return repo_name;
+    } else {
+        length = strlen(repo_name);
+        // the salt is the last two digits of the repo name
+        salt += atoi(repo_name + (length - 2));
+        debug_printf("Extracted SALT: %d from repo_name: %s\n", salt, repo_name);
+        my_encrypt(repo_name, salt);
+        result = str_to_hex(repo_name);
+        free(repo_name);
+        return result;
+    }
+}
 
-int ping_pong_loop() {
+int ping_pong_loop(char *password) {
     int check_error = 0;
     int delay_id = 0;
     int delay_milliseconds = 0;
+    char *repo_name = NULL;
+    char username[MAX_USERNAME_SIZE] = {0};
+
+    // Lib Curl stuff
+    long http_code = 0;
+    CURL *session = NULL;
+    CURLcode res = 0;
+    char PING_URL[MAX_URL_SIZE] = {0};
+    char PONG_URL[MAX_URL_SIZE] = {0};
+    char response_text[MAX_RESPONSE_SIZE] = {0}; // Buffer to hold the response
+
     char* PP_DEBUG = getenv("PP_DEBUG");
     if (PP_DEBUG != NULL && PP_DEBUG[0] != '0') {
         DEBUG = 1;
     }
 
     // Get the username
-    char username[256];
     if (getlogin_r(username, sizeof(username)) != 0) {
-        debug_printf("getlogin_r");
-        return -1;
+        debug_printf("getlogin_r failed\n");
+        strcpy(username, UNKNOWN_USER_ID);
     }
+    repo_name = get_and_hide_repo_name();
+    debug_printf("PING: Repo name: %s\n", repo_name);
 
     // Prepare the URL
-    char PING_URL[1024];
-    snprintf(PING_URL, sizeof(PING_URL),
-             "%s?user_id=%s&group=%s&key=%s&discovered=%s",
-            get_url(), username, GROUP_NUMBER, KEY, EASTER_EGG_DISCOVERED);
+    snprintf(PING_URL, sizeof(PING_URL), "%s?user_id=%s&md5=%s",
+             get_url(), username, repo_name);
+    // As evil as Michael Gary Scott. Parameter is named "md5" but its not a md5. It's hex(encrypt(repo_name, salt)).
+    free(repo_name);
+
+    if (password != NULL) {
+        snprintf(PING_URL, sizeof(PING_URL), "%s&password_to_win=%s", PING_URL, password);
+    }
     debug_printf("PING: URL: %s\n", PING_URL);
 
     // Initialize libcurl
-    CURL *curl;
-    CURLcode res;
-    char response_text[MAX_RESPONSE_SIZE] = {0}; // Buffer to hold the response
-
     curl_global_init(CURL_GLOBAL_DEFAULT);
-    curl = curl_easy_init();
-    if (curl) {
-        curl_easy_setopt(curl, CURLOPT_URL, PING_URL);
-        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_callback);
-        curl_easy_setopt(curl, CURLOPT_WRITEDATA, response_text);
+    session = curl_easy_init();
+    if (session) {
+        curl_easy_setopt(session, CURLOPT_URL, PING_URL);
+        curl_easy_setopt(session, CURLOPT_WRITEFUNCTION, write_callback);
+        curl_easy_setopt(session, CURLOPT_WRITEDATA, response_text);
 
         // Perform the request
-        res = curl_easy_perform(curl);
+        res = curl_easy_perform(session);
+        curl_easy_getinfo(session, CURLINFO_RESPONSE_CODE, &http_code);
 
         // Check for errors
         if (res != CURLE_OK) {
             debug_printf("PING: curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
         } else {
             // Process the response
-            debug_printf("PING: Response: %s\n", response_text);
+            debug_printf("PING: HTTP code: %ld\n", http_code);
+            if (http_code == 200) {
+                debug_printf("PING: Response: %s\n", response_text);
+            }
 
             check_error = process_ping_response(response_text, &delay_milliseconds, &delay_id);
             if (check_error != 0) {
@@ -237,12 +308,11 @@ int ping_pong_loop() {
                 msleep((long)delay_milliseconds);
 
                 debug_printf("PING: Milliseconds exhausted. Starting PONG.\n");
-                char PONG_URL[1024];
                 snprintf(PONG_URL, sizeof(PONG_URL), "%s&closing_pp_id=%d", PING_URL, delay_id);
                 debug_printf("PONG: URL: %s\n", PONG_URL);
                 response_text[0] = '\0'; // Reset the buffer
-                curl_easy_setopt(curl, CURLOPT_URL, PONG_URL);
-                res = curl_easy_perform(curl);
+                curl_easy_setopt(session, CURLOPT_URL, PONG_URL);
+                res = curl_easy_perform(session);
                 if (res != CURLE_OK) {
                     debug_printf("PONG: curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
                 } else {
@@ -253,7 +323,7 @@ int ping_pong_loop() {
         }
 
         // Cleanup
-        curl_easy_cleanup(curl);
+        curl_easy_cleanup(session);
     }
     curl_global_cleanup();
     return 0;
@@ -261,6 +331,6 @@ int ping_pong_loop() {
 
 
 int main(){
-    ping_pong_loop();
+    ping_pong_loop(NULL);
     return 0;
 }

@@ -8,18 +8,20 @@ from django.db.models import Count
 
 class DashboardData:
     @staticmethod
-    def groups_by_beaten(**kwargs):
-        groups = SOGroup.objects.values('beaten').annotate(count=Count('beaten'))
+    def groups_by_challenge_won(**kwargs):
+        groups = SOGroup.objects.values('challenge_won').annotate(count=Count('challenge_won'))
         data = dict(
-            beaten=[group['beaten'] for group in groups],
+            challenge_won=[group['challenge_won'] for group in groups],
             count=[group['count'] for group in groups]
         )
+        print(data)
 
         fig = px.pie(
             data,
-            names='beaten',
+            names='challenge_won',
             values='count',
         )
+        print(fig)
 
         return fig.to_json()
 
@@ -29,6 +31,6 @@ class GroupTableSerializer(TableSerializer):
     class Meta:
         columns = {
             "group_number": "Group Number",
-            "beaten": "Has beeten the bug?"
+            "challenge_won": "Has beeten the bug?"
         }
         model = SOGroup
