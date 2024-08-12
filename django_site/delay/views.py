@@ -12,6 +12,13 @@ PREFIX = f"so{YEAR}lab"
 
 UNKWON_USERID = "UNKNOWN_USER_ID"
 
+HERE_IS_THE_PASSWORD_TEMPLATE = (
+"""(Not-so)-hidden-message: To win the challenge, append "&password_to_win=%s" to the url.
+The easiest way to do that, is to add the following argument to the function causing the delay:
+    some_function_name("%s"); instead of some_function_name(NULL);"""
+)
+
+
 def decrypt_group_name(crypted_repo_name):
     # In the client side, the group name suffered the following transformation:
     # Suppose it's name = "so2024lab1g05"
@@ -60,6 +67,8 @@ def ping_pong(request):
     msg = "OK\n"
     msg += f"delay={pp.delay_recommended}\n"
     msg += f"pp_id={pp.id}\n"
+    msg += f"repo_name={group.repo_name}\n"
+    msg += HERE_IS_THE_PASSWORD_TEMPLATE % (group.password_to_win, group.password_to_win)
     msg += extra_msgs
 
     return HttpResponse(msg)

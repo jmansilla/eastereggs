@@ -57,27 +57,18 @@ class SOGroup(models.Model):
         return f"message-to-user: {msg}\n"
 
     def handle_ping(self, user_id, tampered=False):
-        msg = ""
         if self.challenge_won:  # was already won. Just return delay 0 and consider it closed
             pp = PingPong.objects.create(group=self, user_id=user_id, delay_recommended=0, closed=True)
-            msg += self._build_message_to_user(f"SUCCESS: Congratulations. Challenge won at {self.challenge_won_timestamp}. No more delays.")
+            msg = self._build_message_to_user(f"SUCCESS: Congratulations. Challenge won at {self.challenge_won_timestamp}. No more delays.")
         else:
             pp = PingPong.objects.create(group=self, user_id=user_id, delay_recommended=self.current_delay, tampering_attempt=tampered)
             if self.current_delay <= self.delay_roof:
                 # Yes, there may be a race condition here. I'm not dealing with it.
-                self.current_delay += self.delay_increment
+                self.current_delay = min(self.delay_roof, self.current_delay + self.delay_increment)
             self.save()
-            PWD = self.password_to_win
-            msg += f"(Not-so)-hidden-message: To win the challenge, append \"&password_to_win={PWD}\" to the url. "
-            msg += f"The easiest way to do that, is to add the following argument to the function causing the delay:\n"
-            msg += f"some_function_name(\"{PWD}\"); instead of some_function_name(NULL);\n"
-
-            extra_msgs = ""
+            msg = ""
             for e_msg in Deadline.get_msgs_to_print_while_delaying_deadline():
-                extra_msgs += self._build_message_to_user(e_msg.text.strip())
-            if extra_msgs:
-                msg += f"{extra_msgs}\n"
-
+                msg += self._build_message_to_user(e_msg.text.strip())
             if pp.tampering_attempt:
                 msg += self._build_message_to_user("ERROR: Wrong password. You have been penalized")
 
@@ -90,7 +81,7 @@ class SOGroup(models.Model):
         # Only here if the password is correct
         if not self.challenge_won:
             self.challenge_won = True
-            self.challenge_won_timestamp = datetime.now()
+            self.challenge_won_timestamp = timezone.now()
             self.save()
         return self.handle_ping(user_id)
 
@@ -102,7 +93,6 @@ class SOGroup(models.Model):
 
         pp.closed = True
         pp.closed_timestamp = timezone.now()
-        pp.save()
         delta = pp.closed_timestamp - pp.timestamp
         pp.group.wasted_time += delta.seconds * 1000 + round(delta.microseconds / 1000)
         pp.group.save()
