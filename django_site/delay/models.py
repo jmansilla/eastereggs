@@ -42,6 +42,10 @@ class SOGroup(models.Model):
     challenge_won_timestamp = models.DateTimeField(default=None, null=True, blank=True, editable=False,
                                             help_text="Leave Empty. It'll be filled when the group wins the challenge")
 
+    @property
+    def group_number(self):
+        return self.repo_name[-2:]
+
     class Meta:
         verbose_name = 'S.O.LabGroup'
         verbose_name_plural = 'S.O.LabGroups'
