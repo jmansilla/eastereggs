@@ -1,3 +1,4 @@
+from datetime import timedelta
 from unittest.mock import patch
 from time import sleep
 
@@ -149,3 +150,51 @@ class TestHandleWinAttempt(TestCase):
         self.assertTrue(self.group.challenge_won)
         pp2, msgs = self.group.handle_win_attempt(self.sample_uid, self.pwd_bad)
         self.assertTrue(self.group.challenge_won)
+
+
+class TestHandlePingReturnsMessagesWhenDeadlineIsReached(TestCase):
+    def setUp(self) -> None:
+        self.group = SOGroup.objects.create(repo_name=REPO_NAME)
+        self.sample_uid = "user_id"
+        self.deadline_1 = Deadline.objects.create(
+            name="Deadline 1", deadline=timezone.now() - timedelta(days=1),
+            text="THIS IS A SAMPLE TEXT for D1"
+            )
+
+    def test_handle_ping_returns_a_ping_and_a_message(self):
+        pp, msgs = self.group.handle_ping(self.sample_uid)
+        self.assertIn(f'message-to-user: {self.deadline_1.text}', msgs)
+
+    def test_deadline_for_show_explanation_is_always_excluded(self):
+        special_deadline, created = Deadline.objects.get_or_create(
+            name = Deadline.SHOW_CHALLENGE_EXPLANATION,
+        )
+        special_deadline.deadline = timezone.now() - timedelta(days=1)
+        special_deadline.text = "THIS IS A SAMPLE TEXT for SPECIAL DEADLINE"
+        special_deadline.save()
+        pp, msgs = self.group.handle_ping(self.sample_uid)
+        self.assertNotIn(f'message-to-user: {special_deadline.text}', msgs)
+
+    def test_if_the_deadline_is_not_reached_handle_ping_doesnt_include_that_msg(self):
+        self.deadline_1.deadline = timezone.now() + timedelta(days=1)
+        self.deadline_1.save()
+        pp, msgs = self.group.handle_ping(self.sample_uid)
+        self.assertNotIn(f'message-to-user: {self.deadline_1.text}', msgs)
+
+    def test_several_deadlines_are_ordered_by_deadline(self):
+        self.deadline_0 = Deadline.objects.create(
+            name="Deadline 0", deadline=self.deadline_1.deadline - timedelta(days=1),
+            text="THIS IS A SAMPLE TEXT for D0"
+            )
+
+        self.deadline_minus_1 = Deadline.objects.create(
+            name="Deadline -1", deadline=self.deadline_1.deadline - timedelta(days=2),
+            text="THIS IS A SAMPLE TEXT for D-1"
+            )
+
+        pp, msgs = self.group.handle_ping(self.sample_uid)
+        self.assertIn(f'message-to-user: {self.deadline_minus_1.text}', msgs)
+        self.assertIn(f'message-to-user: {self.deadline_0.text}', msgs)
+        self.assertIn(f'message-to-user: {self.deadline_1.text}', msgs)
+        self.assertLess(msgs.index(self.deadline_minus_1.text), msgs.index(self.deadline_0.text))
+        self.assertLess(msgs.index(self.deadline_0.text), msgs.index(self.deadline_1.text))
