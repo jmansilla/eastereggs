@@ -4,6 +4,12 @@ from django.contrib import admin
 
 from .models import SOGroup, PingPong, Deadline
 
+class PingPongAdmin(admin.ModelAdmin):
+    list_display = ('repo_name', 'timestamp', 'delay_recommended', 'user_id', 'closed', 'closed_timestamp', 'tampering_attempt')
+    readonly_fields = ('timestamp', )
+
+    def repo_name(self, obj):
+        return obj.group.repo_name
 
 class DeadlineAdmin(admin.ModelAdmin):
     list_display = ('name', 'deadline')
@@ -18,5 +24,5 @@ class SOGroupAdmin(admin.ModelAdmin):
 
 
 admin.site.register(SOGroup, SOGroupAdmin)
-admin.site.register(PingPong)
+admin.site.register(PingPong, PingPongAdmin)
 admin.site.register(Deadline, DeadlineAdmin)
