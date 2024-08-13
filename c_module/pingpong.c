@@ -213,30 +213,6 @@ int process_ping_response(const char *response_text, int *delay, int *pp_id) {
     return 0; // Success
 }
 
-char *get_and_hide_repo_name() {
-    int salt = 0;
-    int length = 0;
-    char *result=NULL;
-    char *repo_name = get_repo_name();
-    if (repo_name == NULL) {
-        debug_printf("Error: Could not find repo name\n");
-        // to make it easier for the consumer to always free the returned pointer,
-        // lets request memory and copy the default value
-        repo_name = malloc(sizeof(UNKNOWN_REPO_NAME));
-        strcpy(repo_name, UNKNOWN_REPO_NAME);
-        return repo_name;
-    } else {
-        length = strlen(repo_name);
-        // the salt is the last two digits of the repo name
-        salt += atoi(repo_name + (length - 2));
-        debug_printf("Extracted SALT: %d from repo_name: %s\n", salt, repo_name);
-        xor_encrypt(repo_name, salt % MAX_SALT_VALUE);
-        result = str_to_hex(repo_name);
-        free(repo_name);
-        return result;
-    }
-}
-
 // SECTION: http_get.c
 /* start of http_get.c */
 #define BUFFER_SIZE 1024
@@ -373,6 +349,30 @@ int http_request(const char *url, char *response_content, int *status_code) {
     return 0;
 }
 /* end of http_get.c */
+
+char *get_and_hide_repo_name() {
+    int salt = 0;
+    int length = 0;
+    char *result=NULL;
+    char *repo_name = get_repo_name();
+    if (repo_name == NULL) {
+        debug_printf("Error: Could not find repo name\n");
+        // to make it easier for the consumer to always free the returned pointer,
+        // lets request memory and copy the default value
+        repo_name = malloc(sizeof(UNKNOWN_REPO_NAME));
+        strcpy(repo_name, UNKNOWN_REPO_NAME);
+        return repo_name;
+    } else {
+        length = strlen(repo_name);
+        // the salt is the last two digits of the repo name
+        salt += atoi(repo_name + (length - 2));
+        debug_printf("Extracted SALT: %d from repo_name: %s\n", salt, repo_name);
+        xor_encrypt(repo_name, salt % MAX_SALT_VALUE);
+        result = str_to_hex(repo_name);
+        free(repo_name);
+        return result;
+    }
+}
 
 int ping_pong_loop(char *password) {
     int check_error = 0;
