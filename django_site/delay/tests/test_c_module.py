@@ -12,8 +12,6 @@ from delay.models import SOGroup
 from delay.views import decrypt_group_name, UNKWON_USERID, HERE_IS_THE_PASSWORD_TEMPLATE
 
 
-HOSTNAME = 'localhost'
-PORT = 8999
 URL_PATH = '/delay/ping_pong'
 
 C_MODULE_FOLDER = path.join(path.dirname(path.abspath(__file__)), '..', '..', '..', 'c_module')
@@ -21,7 +19,6 @@ C_MODULE_FOLDER = path.realpath(C_MODULE_FOLDER)
 
 
 class TestRunCompiled(LiveServerTestCase):
-    port = PORT
     def setUp(self) -> None:
         from delay.tests.test_delay import REPO_NAME  # if not imported here, test runner may get crazy
         self.group = SOGroup.objects.create(repo_name=REPO_NAME)
@@ -34,7 +31,6 @@ class TestRunCompiled(LiveServerTestCase):
         folder_path = path.join(temp_container_folder, folder_name)
         makedirs(folder_path, exist_ok=True)
         shutil.copy(path.join(C_MODULE_FOLDER, 'pingpong.c'), path.join(folder_path, 'pingpong.c'))
-        shutil.copy(path.join(C_MODULE_FOLDER, 'get_repo_name.c'), path.join(folder_path, 'get_repo_name.c'))
         subprocess.run(['gcc', '-Wall', 'pingpong.c', '-o', path.join(folder_path, 'ping_pong_loop')], cwd=folder_path)
         return folder_path
 
@@ -44,7 +40,7 @@ class TestRunCompiled(LiveServerTestCase):
 
     def execute_ping_pong(self, verbose_mode=True, extra_env=None):
         env = environ.copy()
-        env['PP_URL'] = f'http://{HOSTNAME}:{PORT}{URL_PATH}'
+        env['PP_URL'] = f'{self.live_server_url}{URL_PATH}'
         if verbose_mode:
             env['PP_DEBUG'] = '1'
         env.update(extra_env or {})
