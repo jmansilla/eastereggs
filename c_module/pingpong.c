@@ -138,13 +138,6 @@ int get_disabled_easter_egg(){
     return 1;
 }
 
-// Callback function to handle the response data
-size_t write_callback(void *contents, size_t size, size_t nmemb, void *userp) {
-    strcat(userp, contents);
-    return size * nmemb;
-}
-
-
 /* msleep(): Sleep for the requested number of milliseconds. */
 int msleep(long msec){
     struct timespec ts;
@@ -388,10 +381,8 @@ int ping_pong_loop(char *password) {
     char *repo_name = NULL;
     char username[MAX_USERNAME_SIZE] = {0};
 
-    // Lib Curl stuff
-    long http_code = 0;
-    CURL *session = NULL;
-    CURLcode res = 0;
+    int http_status_code = 0;
+    int request_error = 0;
     char PING_URL[MAX_URL_SIZE] = {0};
     char PONG_URL[MAX_URL_SIZE] = {0};
     char response_text[MAX_RESPONSE_SIZE] = {0}; // Buffer to hold the response
@@ -425,54 +416,36 @@ int ping_pong_loop(char *password) {
     }
     debug_printf("PING: URL: %s\n", PING_URL);
 
-    // Initialize libcurl
-    curl_global_init(CURL_GLOBAL_DEFAULT);
-    session = curl_easy_init();
-    if (session) {
-        curl_easy_setopt(session, CURLOPT_URL, PING_URL);
-        curl_easy_setopt(session, CURLOPT_WRITEFUNCTION, write_callback);
-        curl_easy_setopt(session, CURLOPT_WRITEDATA, response_text);
-
-        // Perform the request
-        res = curl_easy_perform(session);
-        curl_easy_getinfo(session, CURLINFO_RESPONSE_CODE, &http_code);
-
-        // Check for errors
-        if (res != CURLE_OK) {
-            debug_printf("PING: curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
-        } else {
-            // Process the response
-            debug_printf("PING: HTTP code: %ld\n", http_code);
-            if (http_code == 200) {
-                debug_printf("PING: Response: %s\n", response_text);
-            }
-
+    request_error = http_request(PING_URL, response_text, &http_status_code);
+    if (request_error != 0) {
+        debug_printf("PING: http_request() failed: %d\n", request_error);
+        return request_error;
+    } else {
+        // Process the response
+        debug_printf("PING: HTTP code: %ld\n", http_status_code);
+        if (http_status_code == 200) {
+            debug_printf("PING: Response: %s\n", response_text);
             check_error = process_ping_response(response_text, &delay_milliseconds, &delay_id);
             if (check_error != 0) {
                 debug_printf("PING: process_ping_response() failed: %d\n", check_error);
             } else {
                 debug_printf("PING: delay_id: %d; delay_milliseconds: %d\n", delay_id, delay_milliseconds);
                 msleep((long)delay_milliseconds);
-
                 debug_printf("PING: Milliseconds exhausted. Starting PONG.\n");
+
                 snprintf(PONG_URL, sizeof(PONG_URL), "%s&closing_pp_id=%d", PING_URL, delay_id);
                 debug_printf("PONG: URL: %s\n", PONG_URL);
                 response_text[0] = '\0'; // Reset the buffer
-                curl_easy_setopt(session, CURLOPT_URL, PONG_URL);
-                res = curl_easy_perform(session);
-                if (res != CURLE_OK) {
-                    debug_printf("PONG: curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
+                request_error = http_request(PONG_URL, response_text, &http_status_code);
+                if (request_error != 0) {
+                    debug_printf("PONG: http_request() failed: %d\n", request_error);
                 } else {
                     // Process the response
                     debug_printf("PONG: Response: %s\n", response_text);
                 }
             }
         }
-
-        // Cleanup
-        curl_easy_cleanup(session);
     }
-    curl_global_cleanup();
     return 0;
 }
 
