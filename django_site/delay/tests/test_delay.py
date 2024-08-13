@@ -8,7 +8,6 @@ from django.utils import timezone
 
 from delay.models import SOGroup, PingPong, Deadline
 
-# Create your tests here.
 
 REPO_NAME = "so2024lab1g05"
 

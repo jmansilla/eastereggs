@@ -29,10 +29,6 @@ class TestDecryptGroupName(TestCase):
             as_hex = xored.encode('utf-8').hex()
             self.assertEqual(decrypt_group_name(as_hex), original)
 
-        # # Step 2: Decode the bytes back to the original string using UTF-8
-        # original_string = bytes.fromhex(as_hex).decode('utf-8')
-        # print(xor_encrypt(original_string, 5))
-
 
 class TestPingPongViewLookupForGroup(TestCase):
     # testing how the md5 param is used to find the group to use within the view
@@ -55,7 +51,7 @@ class TestPingPongViewLookupForGroup(TestCase):
 
 class TestPingPongView(TestCase):
     def setUp(self) -> None:
-        from delay.tests.test_delay import REPO_NAME
+        from delay.tests.test_delay import REPO_NAME  # if not imported here, test runner may get crazy
         self.group = SOGroup.objects.create(repo_name=REPO_NAME)
         patcher = patch('delay.views.decrypt_group_name')
         self.mock_decrypt = patcher.start()
