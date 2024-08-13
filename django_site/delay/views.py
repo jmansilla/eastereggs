@@ -25,16 +25,9 @@ def decrypt_group_name(crypted_repo_name):
     # It's encrypted with encrypt("so2024lab1g05", salt=5)  where salt number is the group number
     # An later it's represented as hex
     # We need to revert such transformation
-    length = len(crypted_repo_name)
-    if length % 2 != 0:
-        return None
-    de_hex_bits = []
-    for i in range(0, length, 2):
-        hbit = crypted_repo_name[i: i+2]
-        de_hex_bits.append(chr(int(hbit, 16)))
-    ascii = ''.join(de_hex_bits)
-
-    for salt in range(100):
+    ascii = bytes.fromhex(crypted_repo_name).decode('utf-8')
+    # we don't want to use the same salt for all groups. Iterate until we find one working
+    for salt in range(50):  # In c_module, salt is limited to 50 (with module operation over group number)
         decrypted = xor_encrypt(ascii, salt)
         if decrypted.startswith(PREFIX):
             return decrypted
