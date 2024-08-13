@@ -1,6 +1,6 @@
 from os import environ, makedirs, path
 import shutil, subprocess
-from tempfile import TemporaryDirectory
+from tempfile import mkdtemp
 from unittest.mock import patch, call
 
 from django.shortcuts import get_object_or_404
@@ -12,8 +12,6 @@ from delay.models import SOGroup
 from delay.views import decrypt_group_name, UNKWON_USERID, HERE_IS_THE_PASSWORD_TEMPLATE
 
 
-HOSTNAME = 'localhost'
-PORT = 8999
 URL_PATH = '/delay/ping_pong'
 
 C_MODULE_FOLDER = path.join(path.dirname(path.abspath(__file__)), '..', '..', '..', 'c_module')
@@ -21,7 +19,6 @@ C_MODULE_FOLDER = path.realpath(C_MODULE_FOLDER)
 
 
 class TestRunCompiled(LiveServerTestCase):
-    port = PORT
     def setUp(self) -> None:
         from delay.tests.test_delay import REPO_NAME  # if not imported here, test runner may get crazy
         self.group = SOGroup.objects.create(repo_name=REPO_NAME)
@@ -29,12 +26,14 @@ class TestRunCompiled(LiveServerTestCase):
         return super().setUp()
 
     def create_tmp_folder_and_copy_and_compile(self, folder_name):
-        tempfile = TemporaryDirectory(delete=False)
-        folder_path = path.join(tempfile.name, folder_name)
+        temp_container_folder = mkdtemp()
+        self.addCleanup(shutil.rmtree, temp_container_folder)
+        folder_path = path.join(temp_container_folder, folder_name)
         makedirs(folder_path, exist_ok=True)
         shutil.copy(path.join(C_MODULE_FOLDER, 'pingpong.c'), path.join(folder_path, 'pingpong.c'))
-        shutil.copy(path.join(C_MODULE_FOLDER, 'get_repo_name.c'), path.join(folder_path, 'get_repo_name.c'))
-        subprocess.run(['gcc', '-Wall', 'pingpong.c', '-o', path.join(folder_path, 'ping_pong_loop')], cwd=folder_path)
+        shutil.copy(path.join(C_MODULE_FOLDER, 'example_client.c'), path.join(folder_path, 'example_client.c'))
+        self.binary_name = 'pp_client'
+        subprocess.run(['gcc', '-Wall', 'example_client.c', '-o', path.join(folder_path, self.binary_name)], cwd=folder_path)
         return folder_path
 
     def tearDown(self) -> None:
@@ -43,11 +42,11 @@ class TestRunCompiled(LiveServerTestCase):
 
     def execute_ping_pong(self, verbose_mode=True, extra_env=None):
         env = environ.copy()
-        env['PP_URL'] = f'http://{HOSTNAME}:{PORT}{URL_PATH}'
+        env['PP_URL'] = f'{self.live_server_url}{URL_PATH}'
         if verbose_mode:
             env['PP_DEBUG'] = '1'
         env.update(extra_env or {})
-        return subprocess.run(['./ping_pong_loop'], cwd=self.folder_path, capture_output=True, env=env)
+        return subprocess.run([f'./{self.binary_name}'], cwd=self.folder_path, capture_output=True, env=env)
 
     def test_simple_integration(self):
         number = 123
