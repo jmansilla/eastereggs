@@ -34,7 +34,7 @@ class TestRunCompiled(LiveServerTestCase):
         makedirs(folder_path, exist_ok=True)
         shutil.copy(path.join(C_MODULE_FOLDER, 'pingpong.c'), path.join(folder_path, 'pingpong.c'))
         shutil.copy(path.join(C_MODULE_FOLDER, 'get_repo_name.c'), path.join(folder_path, 'get_repo_name.c'))
-        subprocess.run(['gcc', '-Wall', 'pingpong.c', '-o', path.join(folder_path, 'ping_pong_loop'), '-lcurl'], cwd=folder_path)
+        subprocess.run(['gcc', '-Wall', 'pingpong.c', '-o', path.join(folder_path, 'ping_pong_loop')], cwd=folder_path)
         return folder_path
 
     def tearDown(self) -> None:

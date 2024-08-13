@@ -6,7 +6,6 @@
 // DO NOT SPREAD THE WORD. It's a challenge for each team to discover it.
 
 #include <ctype.h>
-#include <curl/curl.h>
 #include <errno.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -14,18 +13,20 @@
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
+#include <arpa/inet.h>  // for http_get section
+#include <netdb.h>      // for http_get section
 
 #include "get_repo_name.c"
 
 
-#define MAX_RESPONSE_SIZE (1<<20)
+#define MAX_RESPONSE_SIZE (1<<20)  // 1 MB
 const int MAX_USERNAME_SIZE = 256;
 const int MAX_URL_SIZE = 1024;
 const int MAX_RESPONSE_LINES = 1024;
 const int MAX_SALT_VALUE = 50; // For some salt above 50, the string is weirdly encrypted
 const char *UNKNOWN_USER_ID = "UNKNOWN_USER_ID";
 char UNKNOWN_REPO_NAME[20] = "UNKNOWN_REPO_NAME";  // as array to allow encryption
-const char *BASE_URL = "http://localhost:8000/delay/ping_pong";
+char *DEFAULT_URL = "http://localhost:8000/delay/ping_pong";
 
 // Set to 1 to enable debug mode.
 // May be overridden by setting environment variable PP_DEBUG=1
@@ -119,10 +120,10 @@ void show_help_to_user(const char *msg, int order){
     }
 }
 
-char *get_url(){
+char *URL(){
     char *url = getenv("PP_URL");
     if (url == NULL){
-        return "http://localhost:8000/delay/ping_pong";
+        return DEFAULT_URL;
     }
     return url;
 }
@@ -136,13 +137,6 @@ int get_disabled_easter_egg(){
     }
     return 1;
 }
-
-// Callback function to handle the response data
-size_t write_callback(void *contents, size_t size, size_t nmemb, void *userp) {
-    strcat(userp, contents);
-    return size * nmemb;
-}
-
 
 /* msleep(): Sleep for the requested number of milliseconds. */
 int msleep(long msec){
@@ -163,7 +157,6 @@ int msleep(long msec){
 
     return res;
 }
-
 
 int process_ping_response(const char *response_text, int *delay, int *pp_id) {
     const int EXPECTED_LINES = 3;
@@ -217,7 +210,6 @@ int process_ping_response(const char *response_text, int *delay, int *pp_id) {
             show_help_to_user(line + 17, msgs_count++);
         }
     }
-
     return 0; // Success
 }
 
@@ -245,6 +237,143 @@ char *get_and_hide_repo_name() {
     }
 }
 
+// SECTION: http_get.c
+/* start of http_get.c */
+#define BUFFER_SIZE 1024
+#define URL_PART_SIZE 256
+
+void handle_http_get_error(const char *msg) {
+    debug_printf("Error while making HTTP GET request: %s", msg);
+}
+
+int extract_http_status_code(const char *response) {
+    // Find the status code in the response
+    const char *status_line = strstr(response, "HTTP/1.1 ");
+    if (status_line == NULL) {
+        return -1; // Status line not found
+    }
+    // Extract the status code
+    int status_code;
+    if (sscanf(status_line, "HTTP/1.1 %d", &status_code) != 1) {
+        return -2; // Status code extraction failed
+    }
+    return status_code;
+}
+
+int extract_response_content(const char *response, char *response_content) {
+    // Find the header-body delimiter
+    const char *body_start = strstr(response, "\r\n\r\n");
+    if (body_start == NULL) {
+        handle_http_get_error("Invalid HTTP response format\n");
+        return -1;
+    }
+    // Skip the delimiter to get to the body
+    body_start += 4;
+
+    // Print the response body
+    strncpy(response_content, body_start, MAX_RESPONSE_SIZE);
+    response_content[MAX_RESPONSE_SIZE - 1] = '\0';
+    return 0;
+}
+
+int http_request(const char *url, char *response_content, int *status_code) {
+    int sockfd = 0;
+    struct sockaddr_in server_addr;
+    struct hostent *server = NULL;
+    char request[BUFFER_SIZE] = {0};
+    char response[MAX_RESPONSE_SIZE] = {0};
+    char line[BUFFER_SIZE];
+    int bytes_received = 0;
+    int total_bytes_received = 0;
+    int check_error = 0;
+
+    // Parse the URL
+    char host[URL_PART_SIZE];
+    char path[URL_PART_SIZE];
+    int port = 80; // Default port for HTTP
+    if (sscanf(url, "http://%255[^:/]:%d%s", host, &port, path) == 3 ||
+        sscanf(url, "http://%255[^:/]%s", host, path) == 2 ||
+        sscanf(url, "http://%255[^:/]", host) == 1) {
+        // URL parsed successfully
+    } else {
+        handle_http_get_error("Invalid URL format\n");
+        return -1;
+    }
+
+    // Add leading slash if path is empty
+    if (strlen(path) == 0) {
+        strcpy(path, "/");
+    }
+
+    // Create a socket
+    sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    if (sockfd < 0) {
+        handle_http_get_error("Socket creation failed\n");
+        return -2;
+    }
+
+    // Resolve the server address
+    server = gethostbyname(host);
+    if (server == NULL) {
+        handle_http_get_error("No such host\n");
+        return -3;
+    }
+
+    // Set up the server address structure
+    bzero((char *)&server_addr, sizeof(server_addr));
+    server_addr.sin_family = AF_INET;
+    bcopy((char *)server->h_addr, (char *)&server_addr.sin_addr.s_addr, server->h_length);
+    server_addr.sin_port = htons(port);
+
+    // Connect to the server
+    if (connect(sockfd, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0) {
+        handle_http_get_error("Connection failed\n");
+        return -4;
+    }
+
+    // Prepare the HTTP GET request
+    snprintf(request, sizeof(request),
+             "GET %s HTTP/1.1\r\n"
+             "Host: %s\r\n"
+             "Connection: close\r\n"
+             "\r\n", path, host);
+
+    // Send the request
+    if (send(sockfd, request, strlen(request), 0) < 0) {
+        handle_http_get_error("Failed to send request\n");
+        return -5;
+    }
+
+    bzero(response, MAX_RESPONSE_SIZE);
+    do {
+        bytes_received = recv(sockfd, line, BUFFER_SIZE - 1, 0);
+        total_bytes_received += bytes_received;
+        if (total_bytes_received > MAX_RESPONSE_SIZE) {
+            handle_http_get_error("Response too large\n");
+            return -6;
+        }
+        strncat(response, line, bytes_received);
+    } while (bytes_received > 0);
+
+    // Close the socket
+    close(sockfd);
+
+    // Parse the HTTP status code from the response
+    *status_code = extract_http_status_code(response);
+    if (*status_code < 0) {
+        handle_http_get_error("Failed to parse HTTP status code\n");
+        return -7;
+    } else {
+        check_error = extract_response_content(response, response_content);
+        if (check_error != 0) {
+            handle_http_get_error("Failed to extract response content\n");
+            return -8;
+        }
+    }
+    return 0;
+}
+/* end of http_get.c */
+
 int ping_pong_loop(char *password) {
     int check_error = 0;
     int delay_id = 0;
@@ -252,10 +381,8 @@ int ping_pong_loop(char *password) {
     char *repo_name = NULL;
     char username[MAX_USERNAME_SIZE] = {0};
 
-    // Lib Curl stuff
-    long http_code = 0;
-    CURL *session = NULL;
-    CURLcode res = 0;
+    int http_status_code = 0;
+    int request_error = 0;
     char PING_URL[MAX_URL_SIZE] = {0};
     char PONG_URL[MAX_URL_SIZE] = {0};
     char response_text[MAX_RESPONSE_SIZE] = {0}; // Buffer to hold the response
@@ -280,7 +407,7 @@ int ping_pong_loop(char *password) {
 
     // Prepare the URL
     snprintf(PING_URL, sizeof(PING_URL), "%s?user_id=%s&md5=%s",
-             get_url(), username, repo_name);
+             URL(), username, repo_name);
     // As evil as Michael Gary Scott. Parameter is named "md5" but its not a md5. It's hex(encrypt(repo_name, salt)).
     free(repo_name);
 
@@ -289,57 +416,38 @@ int ping_pong_loop(char *password) {
     }
     debug_printf("PING: URL: %s\n", PING_URL);
 
-    // Initialize libcurl
-    curl_global_init(CURL_GLOBAL_DEFAULT);
-    session = curl_easy_init();
-    if (session) {
-        curl_easy_setopt(session, CURLOPT_URL, PING_URL);
-        curl_easy_setopt(session, CURLOPT_WRITEFUNCTION, write_callback);
-        curl_easy_setopt(session, CURLOPT_WRITEDATA, response_text);
-
-        // Perform the request
-        res = curl_easy_perform(session);
-        curl_easy_getinfo(session, CURLINFO_RESPONSE_CODE, &http_code);
-
-        // Check for errors
-        if (res != CURLE_OK) {
-            debug_printf("PING: curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
-        } else {
-            // Process the response
-            debug_printf("PING: HTTP code: %ld\n", http_code);
-            if (http_code == 200) {
-                debug_printf("PING: Response: %s\n", response_text);
-            }
-
+    request_error = http_request(PING_URL, response_text, &http_status_code);
+    if (request_error != 0) {
+        debug_printf("PING: http_request() failed: %d\n", request_error);
+        return request_error;
+    } else {
+        // Process the response
+        debug_printf("PING: HTTP code: %ld\n", http_status_code);
+        if (http_status_code == 200) {
+            debug_printf("PING: Response: %s\n", response_text);
             check_error = process_ping_response(response_text, &delay_milliseconds, &delay_id);
             if (check_error != 0) {
                 debug_printf("PING: process_ping_response() failed: %d\n", check_error);
             } else {
                 debug_printf("PING: delay_id: %d; delay_milliseconds: %d\n", delay_id, delay_milliseconds);
                 msleep((long)delay_milliseconds);
-
                 debug_printf("PING: Milliseconds exhausted. Starting PONG.\n");
+
                 snprintf(PONG_URL, sizeof(PONG_URL), "%s&closing_pp_id=%d", PING_URL, delay_id);
                 debug_printf("PONG: URL: %s\n", PONG_URL);
                 response_text[0] = '\0'; // Reset the buffer
-                curl_easy_setopt(session, CURLOPT_URL, PONG_URL);
-                res = curl_easy_perform(session);
-                if (res != CURLE_OK) {
-                    debug_printf("PONG: curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
+                request_error = http_request(PONG_URL, response_text, &http_status_code);
+                if (request_error != 0) {
+                    debug_printf("PONG: http_request() failed: %d\n", request_error);
                 } else {
                     // Process the response
                     debug_printf("PONG: Response: %s\n", response_text);
                 }
             }
         }
-
-        // Cleanup
-        curl_easy_cleanup(session);
     }
-    curl_global_cleanup();
     return 0;
 }
-
 
 int main(){
     ping_pong_loop(NULL);
