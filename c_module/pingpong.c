@@ -26,7 +26,7 @@ const int MAX_RESPONSE_LINES = 1024;
 const int MAX_SALT_VALUE = 50; // For some salt above 50, the string is weirdly encrypted
 const char *UNKNOWN_USER_ID = "UNKNOWN_USER_ID";
 char UNKNOWN_REPO_NAME[20] = "UNKNOWN_REPO_NAME";  // as array to allow encryption
-const char *DEFAULT_URL = "http://localhost:8000/delay/ping_pong";
+char *DEFAULT_URL = "http://localhost:8000/delay/ping_pong";
 
 // Set to 1 to enable debug mode.
 // May be overridden by setting environment variable PP_DEBUG=1
@@ -165,7 +165,6 @@ int msleep(long msec){
     return res;
 }
 
-
 int process_ping_response(const char *response_text, int *delay, int *pp_id) {
     const int EXPECTED_LINES = 3;
     char text_copy[MAX_RESPONSE_SIZE];
@@ -218,7 +217,6 @@ int process_ping_response(const char *response_text, int *delay, int *pp_id) {
             show_help_to_user(line + 17, msgs_count++);
         }
     }
-
     return 0; // Success
 }
 
@@ -389,7 +387,7 @@ int http_request(const char *url, char *response_content, int *status_code) {
     char line[BUFFER_SIZE];
     int bytes_received = 0;
     int total_bytes_received = 0;
-    int error_code = 0;
+    int check_error = 0;
 
     // Parse the URL
     char host[URL_PART_SIZE];
@@ -468,8 +466,8 @@ int http_request(const char *url, char *response_content, int *status_code) {
         handle_http_get_error("Failed to parse HTTP status code\n");
         return -7;
     } else {
-        error_code = extract_response_content(response, response_content);
-        if (error_code != 0) {
+        check_error = extract_response_content(response, response_content);
+        if (check_error != 0) {
             handle_http_get_error("Failed to extract response content\n");
             return -8;
         }
