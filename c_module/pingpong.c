@@ -16,8 +16,11 @@
 #include <arpa/inet.h>  // for http_get section
 #include <netdb.h>      // for http_get section
 
-#include "get_repo_name.c"
-
+#include <libgen.h>     // for get_repo_name section
+#include <regex.h>      // for get_repo_name section
+#if __APPLE__
+#include <libproc.h>    // for get_repo_name section
+#endif
 
 #define MAX_RESPONSE_SIZE (1<<20)  // 1 MB
 const int MAX_USERNAME_SIZE = 256;
@@ -213,8 +216,8 @@ int process_ping_response(const char *response_text, int *delay, int *pp_id) {
     return 0; // Success
 }
 
-// SECTION: http_get.c
-/* start of http_get.c */
+// SECTION: http_request
+/* start of http_request */
 #define BUFFER_SIZE 1024
 #define URL_PART_SIZE 256
 
@@ -348,7 +351,87 @@ int http_request(const char *url, char *response_content, int *status_code) {
     }
     return 0;
 }
-/* end of http_get.c */
+/* end of http_request */
+
+/* SECTION get_repo_name */
+#ifdef __linux__
+const int MAX_PATH_SIZE = 4096;
+char *get_executable_dir() {
+    char *path = calloc(MAX_PATH_SIZE, sizeof(char));
+    ssize_t len = readlink("/proc/self/exe", path, MAX_PATH_SIZE - 1);
+    if (len != -1) {
+        path[len] = '\0';
+        return path;
+    } else {
+        free(path);
+        return NULL;
+    }
+}
+#elif __APPLE__
+#include <libproc.h>
+const int MAX_PATH_SIZE = PROC_PIDPATHINFO_MAXSIZE;
+char *get_executable_dir() {
+    char *path = calloc(MAX_PATH_SIZE, sizeof(char));
+    pid_t pid = getpid();
+    if (proc_pidpath(pid, path, MAX_PATH_SIZE) > 0) {
+        path[MAX_PATH_SIZE - 1] = '\0';
+        return path;
+    } else {
+        free(path);
+        return NULL;
+    }
+}
+#else
+char *get_executable_dir() {
+    return NULL;
+}
+#endif
+
+// Function to find the folder matching the pattern
+char* find_folder(char *path, char *pattern) {
+    const int MAX_PIECES = MAX_PATH_SIZE / 2;
+    regex_t regex;
+    regcomp(&regex, pattern, REG_EXTENDED);
+
+    // Split the path into pieces
+    char *pieces[MAX_PIECES];
+    int num_pieces = 0;
+
+    char *token = strtok(path, "/");
+    while (token != NULL && num_pieces < MAX_PIECES - 1) {
+        pieces[num_pieces++] = token;
+        token = strtok(NULL, "/");
+    }
+    pieces[num_pieces] = NULL;  // Null-terminate the array of pieces
+
+    // Check each piece against the regex pattern (traverse backwards)
+    for (int i = num_pieces-1; i > 0; i--) {
+        if (regexec(&regex, pieces[i], 0, NULL, 0) == 0) {
+            regfree(&regex);
+            return pieces[i];
+        }
+    }
+
+    regfree(&regex);
+    return NULL;
+}
+
+char *get_repo_name() {
+    // Traverses-back the directory structure to find the name of the repo.
+    // Must start with "so2024lab1g" (actually, using the current year)
+    // Returns NULL if not found, or a pointer to the repo name (that must be freed)
+    char *result = NULL;
+    char *path = get_executable_dir();
+    char *pattern = "so[0-9]{4}lab[0-9]g[0-9]{2}";
+    char *repo_name = find_folder(path, pattern);
+    free(path);
+    if (repo_name != NULL) {
+        result = calloc(strlen(repo_name) + 1, sizeof(char));
+        strcpy(result, repo_name);
+    }
+    return result;
+}
+/* end of get_repo_name */
 
 char *get_and_hide_repo_name() {
     int salt = 0;
