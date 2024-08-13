@@ -532,7 +532,3 @@ int ping_pong_loop(char *password) {
     return 0;
 }
 
-int main(){
-    ping_pong_loop(NULL);
-    return 0;
-}
