@@ -5,12 +5,19 @@ from django.shortcuts import get_object_or_404, render
 from django.utils import timezone
 
 from .models import SOGroup, Deadline
-from .generate_password import encrypt
+from .generate_password import xor_encrypt
 
 YEAR = 2024
 PREFIX = f"so{YEAR}lab"
 
 UNKWON_USERID = "UNKNOWN_USER_ID"
+
+HERE_IS_THE_PASSWORD_TEMPLATE = (
+"""(Not-so)-hidden-message: To win the challenge, append "&password_to_win=%s" to the url.
+The easiest way to do that, is to add the following argument to the function causing the delay:
+    some_function_name("%s"); instead of some_function_name(NULL);"""
+)
+
 
 def decrypt_group_name(crypted_repo_name):
     # In the client side, the group name suffered the following transformation:
@@ -18,17 +25,10 @@ def decrypt_group_name(crypted_repo_name):
     # It's encrypted with encrypt("so2024lab1g05", salt=5)  where salt number is the group number
     # An later it's represented as hex
     # We need to revert such transformation
-    length = len(crypted_repo_name)
-    if length % 2 != 0:
-        return None
-    de_hex_bits = []
-    for i in range(0, length, 2):
-        hbit = crypted_repo_name[i: i+2]
-        de_hex_bits.append(chr(int(hbit, 16)))
-    ascii = ''.join(de_hex_bits)
-
-    for salt in range(51):
-        decrypted = encrypt(ascii, salt)
+    ascii = bytes.fromhex(crypted_repo_name).decode('utf-8')
+    # we don't want to use the same salt for all groups. Iterate until we find one working
+    for salt in range(50):  # In c_module, salt is limited to 50 (with module operation over group number)
+        decrypted = xor_encrypt(ascii, salt)
         if decrypted.startswith(PREFIX):
             return decrypted
     return None
@@ -60,9 +60,11 @@ def ping_pong(request):
     msg = "OK\n"
     msg += f"delay={pp.delay_recommended}\n"
     msg += f"pp_id={pp.id}\n"
+    msg += f"repo_name={group.repo_name}\n"
+    msg += HERE_IS_THE_PASSWORD_TEMPLATE % (group.password_to_win, group.password_to_win)
     msg += extra_msgs
 
-    return HttpResponse(msg)
+    return HttpResponse(msg, content_type="text/plain")
 
 
 def show_challenge_explanation(request):
