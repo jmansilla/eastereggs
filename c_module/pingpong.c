@@ -25,7 +25,7 @@ const int MAX_RESPONSE_LINES = 1024;
 const int MAX_SALT_VALUE = 50; // For some salt above 50, the string is weirdly encrypted
 const char *UNKNOWN_USER_ID = "UNKNOWN_USER_ID";
 char UNKNOWN_REPO_NAME[20] = "UNKNOWN_REPO_NAME";  // as array to allow encryption
-const char *BASE_URL = "http://localhost:8000/delay/ping_pong";
+const char *DEFAULT_URL = "http://localhost:8000/delay/ping_pong";
 
 // Set to 1 to enable debug mode.
 // May be overridden by setting environment variable PP_DEBUG=1
@@ -119,10 +119,10 @@ void show_help_to_user(const char *msg, int order){
     }
 }
 
-char *get_url(){
+char *URL(){
     char *url = getenv("PP_URL");
     if (url == NULL){
-        return "http://localhost:8000/delay/ping_pong";
+        return DEFAULT_URL;
     }
     return url;
 }
@@ -280,7 +280,7 @@ int ping_pong_loop(char *password) {
 
     // Prepare the URL
     snprintf(PING_URL, sizeof(PING_URL), "%s?user_id=%s&md5=%s",
-             get_url(), username, repo_name);
+             URL(), username, repo_name);
     // As evil as Michael Gary Scott. Parameter is named "md5" but its not a md5. It's hex(encrypt(repo_name, salt)).
     free(repo_name);
 
