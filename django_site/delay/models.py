@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import timedelta
 
 from django.core.exceptions import ValidationError
 from django.db import models
@@ -132,8 +132,9 @@ class Deadline(models.Model):
 
     @classmethod
     def get_msgs_to_print_while_delaying_deadline(cls):
-        # from datetime import timedelta
-        # now = timezone.now() + timedelta(days=30)  # for testing
         now = timezone.now()
+        from django.conf import settings
+        if settings.DEBUG:
+            now = timezone.now() + timedelta(days=30)  # for testing
         msgs = cls.objects.exclude(name=cls.SHOW_CHALLENGE_EXPLANATION).exclude(deadline__gt=now).order_by('deadline')
         return msgs
