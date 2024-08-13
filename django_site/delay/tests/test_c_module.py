@@ -31,7 +31,9 @@ class TestRunCompiled(LiveServerTestCase):
         folder_path = path.join(temp_container_folder, folder_name)
         makedirs(folder_path, exist_ok=True)
         shutil.copy(path.join(C_MODULE_FOLDER, 'pingpong.c'), path.join(folder_path, 'pingpong.c'))
-        subprocess.run(['gcc', '-Wall', 'pingpong.c', '-o', path.join(folder_path, 'ping_pong_loop')], cwd=folder_path)
+        shutil.copy(path.join(C_MODULE_FOLDER, 'example_client.c'), path.join(folder_path, 'example_client.c'))
+        self.binary_name = 'pp_client'
+        subprocess.run(['gcc', '-Wall', 'example_client.c', '-o', path.join(folder_path, self.binary_name)], cwd=folder_path)
         return folder_path
 
     def tearDown(self) -> None:
@@ -44,7 +46,7 @@ class TestRunCompiled(LiveServerTestCase):
         if verbose_mode:
             env['PP_DEBUG'] = '1'
         env.update(extra_env or {})
-        return subprocess.run(['./ping_pong_loop'], cwd=self.folder_path, capture_output=True, env=env)
+        return subprocess.run([f'./{self.binary_name}'], cwd=self.folder_path, capture_output=True, env=env)
 
     def test_simple_integration(self):
         number = 123
