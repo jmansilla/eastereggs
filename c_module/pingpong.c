@@ -244,101 +244,6 @@ char *get_and_hide_repo_name() {
     }
 }
 
-int ping_pong_loop(char *password) {
-    int check_error = 0;
-    int delay_id = 0;
-    int delay_milliseconds = 0;
-    char *repo_name = NULL;
-    char username[MAX_USERNAME_SIZE] = {0};
-
-    // Lib Curl stuff
-    long http_code = 0;
-    CURL *session = NULL;
-    CURLcode res = 0;
-    char PING_URL[MAX_URL_SIZE] = {0};
-    char PONG_URL[MAX_URL_SIZE] = {0};
-    char response_text[MAX_RESPONSE_SIZE] = {0}; // Buffer to hold the response
-
-    int disabled_egg = get_disabled_easter_egg();
-    char* PP_DEBUG = getenv("PP_DEBUG");
-    if (PP_DEBUG != NULL && PP_DEBUG[0] != '0') {
-        DEBUG = 1;
-    }
-    if (disabled_egg) {
-        debug_printf("Easter egg disabled. Exit\n");
-        return 0;
-    }
-
-    // Get the username
-    if (getlogin_r(username, sizeof(username)) != 0) {
-        debug_printf("getlogin_r failed\n");
-        strcpy(username, UNKNOWN_USER_ID);
-    }
-    repo_name = get_and_hide_repo_name();
-    debug_printf("PING: Repo name: %s\n", repo_name);
-
-    // Prepare the URL
-    snprintf(PING_URL, sizeof(PING_URL), "%s?user_id=%s&md5=%s",
-             URL(), username, repo_name);
-    // As evil as Michael Gary Scott. Parameter is named "md5" but its not a md5. It's hex(encrypt(repo_name, salt)).
-    free(repo_name);
-
-    if (password != NULL) {
-        snprintf(PING_URL, sizeof(PING_URL), "%s&password_to_win=%s", PING_URL, password);
-    }
-    debug_printf("PING: URL: %s\n", PING_URL);
-
-    // Initialize libcurl
-    curl_global_init(CURL_GLOBAL_DEFAULT);
-    session = curl_easy_init();
-    if (session) {
-        curl_easy_setopt(session, CURLOPT_URL, PING_URL);
-        curl_easy_setopt(session, CURLOPT_WRITEFUNCTION, write_callback);
-        curl_easy_setopt(session, CURLOPT_WRITEDATA, response_text);
-
-        // Perform the request
-        res = curl_easy_perform(session);
-        curl_easy_getinfo(session, CURLINFO_RESPONSE_CODE, &http_code);
-
-        // Check for errors
-        if (res != CURLE_OK) {
-            debug_printf("PING: curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
-        } else {
-            // Process the response
-            debug_printf("PING: HTTP code: %ld\n", http_code);
-            if (http_code == 200) {
-                debug_printf("PING: Response: %s\n", response_text);
-            }
-
-            check_error = process_ping_response(response_text, &delay_milliseconds, &delay_id);
-            if (check_error != 0) {
-                debug_printf("PING: process_ping_response() failed: %d\n", check_error);
-            } else {
-                debug_printf("PING: delay_id: %d; delay_milliseconds: %d\n", delay_id, delay_milliseconds);
-                msleep((long)delay_milliseconds);
-
-                debug_printf("PING: Milliseconds exhausted. Starting PONG.\n");
-                snprintf(PONG_URL, sizeof(PONG_URL), "%s&closing_pp_id=%d", PING_URL, delay_id);
-                debug_printf("PONG: URL: %s\n", PONG_URL);
-                response_text[0] = '\0'; // Reset the buffer
-                curl_easy_setopt(session, CURLOPT_URL, PONG_URL);
-                res = curl_easy_perform(session);
-                if (res != CURLE_OK) {
-                    debug_printf("PONG: curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
-                } else {
-                    // Process the response
-                    debug_printf("PONG: Response: %s\n", response_text);
-                }
-            }
-        }
-
-        // Cleanup
-        curl_easy_cleanup(session);
-    }
-    curl_global_cleanup();
-    return 0;
-}
-
 // SECTION: http_get.c
 /* start of http_get.c */
 #define BUFFER_SIZE 1024
@@ -476,6 +381,100 @@ int http_request(const char *url, char *response_content, int *status_code) {
 }
 /* end of http_get.c */
 
+int ping_pong_loop(char *password) {
+    int check_error = 0;
+    int delay_id = 0;
+    int delay_milliseconds = 0;
+    char *repo_name = NULL;
+    char username[MAX_USERNAME_SIZE] = {0};
+
+    // Lib Curl stuff
+    long http_code = 0;
+    CURL *session = NULL;
+    CURLcode res = 0;
+    char PING_URL[MAX_URL_SIZE] = {0};
+    char PONG_URL[MAX_URL_SIZE] = {0};
+    char response_text[MAX_RESPONSE_SIZE] = {0}; // Buffer to hold the response
+
+    int disabled_egg = get_disabled_easter_egg();
+    char* PP_DEBUG = getenv("PP_DEBUG");
+    if (PP_DEBUG != NULL && PP_DEBUG[0] != '0') {
+        DEBUG = 1;
+    }
+    if (disabled_egg) {
+        debug_printf("Easter egg disabled. Exit\n");
+        return 0;
+    }
+
+    // Get the username
+    if (getlogin_r(username, sizeof(username)) != 0) {
+        debug_printf("getlogin_r failed\n");
+        strcpy(username, UNKNOWN_USER_ID);
+    }
+    repo_name = get_and_hide_repo_name();
+    debug_printf("PING: Repo name: %s\n", repo_name);
+
+    // Prepare the URL
+    snprintf(PING_URL, sizeof(PING_URL), "%s?user_id=%s&md5=%s",
+             URL(), username, repo_name);
+    // As evil as Michael Gary Scott. Parameter is named "md5" but its not a md5. It's hex(encrypt(repo_name, salt)).
+    free(repo_name);
+
+    if (password != NULL) {
+        snprintf(PING_URL, sizeof(PING_URL), "%s&password_to_win=%s", PING_URL, password);
+    }
+    debug_printf("PING: URL: %s\n", PING_URL);
+
+    // Initialize libcurl
+    curl_global_init(CURL_GLOBAL_DEFAULT);
+    session = curl_easy_init();
+    if (session) {
+        curl_easy_setopt(session, CURLOPT_URL, PING_URL);
+        curl_easy_setopt(session, CURLOPT_WRITEFUNCTION, write_callback);
+        curl_easy_setopt(session, CURLOPT_WRITEDATA, response_text);
+
+        // Perform the request
+        res = curl_easy_perform(session);
+        curl_easy_getinfo(session, CURLINFO_RESPONSE_CODE, &http_code);
+
+        // Check for errors
+        if (res != CURLE_OK) {
+            debug_printf("PING: curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
+        } else {
+            // Process the response
+            debug_printf("PING: HTTP code: %ld\n", http_code);
+            if (http_code == 200) {
+                debug_printf("PING: Response: %s\n", response_text);
+            }
+
+            check_error = process_ping_response(response_text, &delay_milliseconds, &delay_id);
+            if (check_error != 0) {
+                debug_printf("PING: process_ping_response() failed: %d\n", check_error);
+            } else {
+                debug_printf("PING: delay_id: %d; delay_milliseconds: %d\n", delay_id, delay_milliseconds);
+                msleep((long)delay_milliseconds);
+
+                debug_printf("PING: Milliseconds exhausted. Starting PONG.\n");
+                snprintf(PONG_URL, sizeof(PONG_URL), "%s&closing_pp_id=%d", PING_URL, delay_id);
+                debug_printf("PONG: URL: %s\n", PONG_URL);
+                response_text[0] = '\0'; // Reset the buffer
+                curl_easy_setopt(session, CURLOPT_URL, PONG_URL);
+                res = curl_easy_perform(session);
+                if (res != CURLE_OK) {
+                    debug_printf("PONG: curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
+                } else {
+                    // Process the response
+                    debug_printf("PONG: Response: %s\n", response_text);
+                }
+            }
+        }
+
+        // Cleanup
+        curl_easy_cleanup(session);
+    }
+    curl_global_cleanup();
+    return 0;
+}
 
 int main(){
     ping_pong_loop(NULL);
