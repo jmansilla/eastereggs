@@ -1,6 +1,6 @@
 from os import environ, makedirs, path
 import shutil, subprocess
-from tempfile import TemporaryDirectory
+from tempfile import mkdtemp
 from unittest.mock import patch, call
 
 from django.shortcuts import get_object_or_404
@@ -29,8 +29,9 @@ class TestRunCompiled(LiveServerTestCase):
         return super().setUp()
 
     def create_tmp_folder_and_copy_and_compile(self, folder_name):
-        tempfile = TemporaryDirectory(delete=False)
-        folder_path = path.join(tempfile.name, folder_name)
+        temp_container_folder = mkdtemp()
+        self.addCleanup(shutil.rmtree, temp_container_folder)
+        folder_path = path.join(temp_container_folder, folder_name)
         makedirs(folder_path, exist_ok=True)
         shutil.copy(path.join(C_MODULE_FOLDER, 'pingpong.c'), path.join(folder_path, 'pingpong.c'))
         shutil.copy(path.join(C_MODULE_FOLDER, 'get_repo_name.c'), path.join(folder_path, 'get_repo_name.c'))
