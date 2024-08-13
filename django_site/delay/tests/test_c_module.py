@@ -41,10 +41,10 @@ class TestRunCompiled(LiveServerTestCase):
         shutil.rmtree(self.folder_path)
         return super().tearDown()
 
-    def execute_ping_pong(self, debug_mode=True, extra_env=None):
+    def execute_ping_pong(self, verbose_mode=True, extra_env=None):
         env = environ.copy()
         env['PP_URL'] = f'http://{HOSTNAME}:{PORT}{URL_PATH}'
-        if debug_mode:
+        if verbose_mode:
             env['PP_DEBUG'] = '1'
         env.update(extra_env or {})
         return subprocess.run(['./ping_pong_loop'], cwd=self.folder_path, capture_output=True, env=env)
@@ -57,7 +57,7 @@ class TestRunCompiled(LiveServerTestCase):
         self.assertEqual(execution.returncode, 0)
         self.assertIn(b'OK', execution.stderr)
         self.assertIn(b'delay=%d' % number, execution.stderr)
-        execution = self.execute_ping_pong(debug_mode=False)
+        execution = self.execute_ping_pong(verbose_mode=False)
         self.assertEqual(b'', execution.stderr)
 
     def test_no_group_means_a_404(self):
@@ -65,6 +65,11 @@ class TestRunCompiled(LiveServerTestCase):
         execution = self.execute_ping_pong()
         self.assertEqual(execution.returncode, 0)
         self.assertIn(b'404', execution.stderr)
-        execution = self.execute_ping_pong(debug_mode=False)
+        execution = self.execute_ping_pong(verbose_mode=False)
         self.assertEqual(execution.returncode, 0)
         self.assertEqual(b'', execution.stderr)
+
+    def test_simple_integration(self):
+        execution = self.execute_ping_pong(verbose_mode=True, extra_env={'PP_DISABLE_EASTER_EGG': '1'})
+        self.assertEqual(execution.returncode, 0)
+        self.assertEqual(b'Easter egg disabled. Exit\n', execution.stderr)
