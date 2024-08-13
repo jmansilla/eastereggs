@@ -27,8 +27,6 @@ const char *UNKNOWN_USER_ID = "UNKNOWN_USER_ID";
 char UNKNOWN_REPO_NAME[20] = "UNKNOWN_REPO_NAME";  // as array to allow encryption
 const char *BASE_URL = "http://localhost:8000/delay/ping_pong";
 
-// FIXME: Make it possible to disable the easter egg with ENV variables
-
 // Set to 1 to enable debug mode.
 // May be overridden by setting environment variable PP_DEBUG=1
 int DEBUG = 0;
@@ -129,7 +127,15 @@ char *get_url(){
     return url;
 }
 
-// FIXME: Make it possible to disable the easter egg with ENV variables
+int get_disabled_easter_egg(){
+    char *disable_egg = getenv("PP_DISABLE_EASTER_EGG");
+    if (disable_egg == NULL){
+        return 0;
+    } else if (strlen(disable_egg) == 0){
+        return 0;
+    }
+    return 1;
+}
 
 // Callback function to handle the response data
 size_t write_callback(void *contents, size_t size, size_t nmemb, void *userp) {
@@ -254,9 +260,14 @@ int ping_pong_loop(char *password) {
     char PONG_URL[MAX_URL_SIZE] = {0};
     char response_text[MAX_RESPONSE_SIZE] = {0}; // Buffer to hold the response
 
+    int disabled_egg = get_disabled_easter_egg();
     char* PP_DEBUG = getenv("PP_DEBUG");
     if (PP_DEBUG != NULL && PP_DEBUG[0] != '0') {
         DEBUG = 1;
+    }
+    if (disabled_egg) {
+        debug_printf("Easter egg disabled. Exit\n");
+        return 0;
     }
 
     // Get the username
