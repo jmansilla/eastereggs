@@ -5,7 +5,7 @@ from django.shortcuts import get_object_or_404, render
 from django.utils import timezone
 
 from .models import SOGroup, Deadline
-from .generate_password import encrypt
+from .generate_password import xor_encrypt
 
 YEAR = 2024
 PREFIX = f"so{YEAR}lab"
@@ -34,8 +34,8 @@ def decrypt_group_name(crypted_repo_name):
         de_hex_bits.append(chr(int(hbit, 16)))
     ascii = ''.join(de_hex_bits)
 
-    for salt in range(51):
-        decrypted = encrypt(ascii, salt)
+    for salt in range(100):
+        decrypted = xor_encrypt(ascii, salt)
         if decrypted.startswith(PREFIX):
             return decrypted
     return None
@@ -71,7 +71,7 @@ def ping_pong(request):
     msg += HERE_IS_THE_PASSWORD_TEMPLATE % (group.password_to_win, group.password_to_win)
     msg += extra_msgs
 
-    return HttpResponse(msg)
+    return HttpResponse(msg, content_type="text/plain")
 
 
 def show_challenge_explanation(request):
