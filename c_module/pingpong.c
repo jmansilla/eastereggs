@@ -6,7 +6,6 @@
 // DO NOT SPREAD THE WORD. It's a challenge for each team to discover it.
 
 #include <ctype.h>
-#include <curl/curl.h>
 #include <errno.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -14,11 +13,13 @@
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
+#include <arpa/inet.h>  // for http_get section
+#include <netdb.h>      // for http_get section
 
 #include "get_repo_name.c"
 
 
-#define MAX_RESPONSE_SIZE (1<<20)
+#define MAX_RESPONSE_SIZE (1<<20)  // 1 MB
 const int MAX_USERNAME_SIZE = 256;
 const int MAX_URL_SIZE = 1024;
 const int MAX_RESPONSE_LINES = 1024;
@@ -339,6 +340,143 @@ int ping_pong_loop(char *password) {
     curl_global_cleanup();
     return 0;
 }
+
+// SECTION: http_get.c
+/* start of http_get.c */
+#define BUFFER_SIZE 1024
+#define URL_PART_SIZE 256
+
+void handle_http_get_error(const char *msg) {
+    debug_printf("Error while making HTTP GET request: %s", msg);
+}
+
+int extract_http_status_code(const char *response) {
+    // Find the status code in the response
+    const char *status_line = strstr(response, "HTTP/1.1 ");
+    if (status_line == NULL) {
+        return -1; // Status line not found
+    }
+    // Extract the status code
+    int status_code;
+    if (sscanf(status_line, "HTTP/1.1 %d", &status_code) != 1) {
+        return -2; // Status code extraction failed
+    }
+    return status_code;
+}
+
+int extract_response_content(const char *response, char *response_content) {
+    // Find the header-body delimiter
+    const char *body_start = strstr(response, "\r\n\r\n");
+    if (body_start == NULL) {
+        handle_http_get_error("Invalid HTTP response format\n");
+        return -1;
+    }
+    // Skip the delimiter to get to the body
+    body_start += 4;
+
+    // Print the response body
+    strncpy(response_content, body_start, MAX_RESPONSE_SIZE);
+    response_content[MAX_RESPONSE_SIZE - 1] = '\0';
+    return 0;
+}
+
+int http_request(const char *url, char *response_content, int *status_code) {
+    int sockfd = 0;
+    struct sockaddr_in server_addr;
+    struct hostent *server = NULL;
+    char request[BUFFER_SIZE] = {0};
+    char response[MAX_RESPONSE_SIZE] = {0};
+    char line[BUFFER_SIZE];
+    int bytes_received = 0;
+    int total_bytes_received = 0;
+    int error_code = 0;
+
+    // Parse the URL
+    char host[URL_PART_SIZE];
+    char path[URL_PART_SIZE];
+    int port = 80; // Default port for HTTP
+    if (sscanf(url, "http://%255[^:/]:%d%s", host, &port, path) == 3 ||
+        sscanf(url, "http://%255[^:/]%s", host, path) == 2 ||
+        sscanf(url, "http://%255[^:/]", host) == 1) {
+        // URL parsed successfully
+    } else {
+        handle_http_get_error("Invalid URL format\n");
+        return -1;
+    }
+
+    // Add leading slash if path is empty
+    if (strlen(path) == 0) {
+        strcpy(path, "/");
+    }
+
+    // Create a socket
+    sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    if (sockfd < 0) {
+        handle_http_get_error("Socket creation failed\n");
+        return -2;
+    }
+
+    // Resolve the server address
+    server = gethostbyname(host);
+    if (server == NULL) {
+        handle_http_get_error("No such host\n");
+        return -3;
+    }
+
+    // Set up the server address structure
+    bzero((char *)&server_addr, sizeof(server_addr));
+    server_addr.sin_family = AF_INET;
+    bcopy((char *)server->h_addr, (char *)&server_addr.sin_addr.s_addr, server->h_length);
+    server_addr.sin_port = htons(port);
+
+    // Connect to the server
+    if (connect(sockfd, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0) {
+        handle_http_get_error("Connection failed\n");
+        return -4;
+    }
+
+    // Prepare the HTTP GET request
+    snprintf(request, sizeof(request),
+             "GET %s HTTP/1.1\r\n"
+             "Host: %s\r\n"
+             "Connection: close\r\n"
+             "\r\n", path, host);
+
+    // Send the request
+    if (send(sockfd, request, strlen(request), 0) < 0) {
+        handle_http_get_error("Failed to send request\n");
+        return -5;
+    }
+
+    bzero(response, MAX_RESPONSE_SIZE);
+    do {
+        bytes_received = recv(sockfd, line, BUFFER_SIZE - 1, 0);
+        total_bytes_received += bytes_received;
+        if (total_bytes_received > MAX_RESPONSE_SIZE) {
+            handle_http_get_error("Response too large\n");
+            return -6;
+        }
+        strncat(response, line, bytes_received);
+    } while (bytes_received > 0);
+
+    // Close the socket
+    close(sockfd);
+
+    // Parse the HTTP status code from the response
+    *status_code = extract_http_status_code(response);
+    if (*status_code < 0) {
+        handle_http_get_error("Failed to parse HTTP status code\n");
+        return -7;
+    } else {
+        error_code = extract_response_content(response, response_content);
+        if (error_code != 0) {
+            handle_http_get_error("Failed to extract response content\n");
+            return -8;
+        }
+    }
+    return 0;
+}
+/* end of http_get.c */
 
 
 int main(){
