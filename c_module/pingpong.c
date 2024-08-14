@@ -462,14 +462,16 @@ int ping_pong_loop(char *password) {
     int delay_id = 0;
     int delay_milliseconds = 0;
     char *repo_name = NULL;
-    char username[MAX_USERNAME_SIZE] = {0};
-
+    char username[MAX_USERNAME_SIZE];
+    memset(username, 0, MAX_USERNAME_SIZE);
     int http_status_code = 0;
     int request_error = 0;
-    char PING_URL[MAX_URL_SIZE] = {0};
-    char PONG_URL[MAX_URL_SIZE] = {0};
-    char response_text[MAX_RESPONSE_SIZE] = {0}; // Buffer to hold the response
-
+    char PING_URL[MAX_URL_SIZE];
+    memset(PING_URL, 0, MAX_URL_SIZE);
+    char PONG_URL[MAX_URL_SIZE];
+    memset(PONG_URL, 0, MAX_URL_SIZE);
+    char response_text[MAX_RESPONSE_SIZE]; // Buffer to hold the response
+    memset(response_text, 0, MAX_RESPONSE_SIZE);
     int disabled_egg = get_disabled_easter_egg();
     char* PP_DEBUG = getenv("PP_DEBUG");
     if (PP_DEBUG != NULL && PP_DEBUG[0] != '0') {
