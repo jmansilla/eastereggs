@@ -15,17 +15,37 @@ from pathlib import Path
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+SECRETS = {}
+if Path.exists(BASE_DIR / "secrets.txt"):
+    with open(BASE_DIR / "secrets.txt") as f:
+        for line in f:
+            k, v = line.strip().split("=")
+            SECRETS[k.strip()] = v.strip()
+print('Loaded secrets for', SECRETS.keys())
+
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = 'django-insecure-3b&u4*+wghkz+v&kkf!__fia+@&r-eyh)2^e9u_ine-4co6o1t'
+if "SECRET_KEY" in SECRETS:
+    SECRET_KEY = SECRETS["SECRET_KEY"]
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
+if "DEBUG" in SECRETS:
+    _debug = SECRETS["DEBUG"]
+    DEBUG = bool(int(_debug)) if _debug.isdigit() else _debug == 'True'
 
-ALLOWED_HOSTS = ['*']
+
+ALLOWED_HOSTS = [
+  'localhost',
+  '127.0.0.1',
+  'clever-dane-infinitely.ngrok-free.app'
+  ]
+if "EXTRA_ALLOWED_HOSTS" in SECRETS:
+    ALLOWED_HOSTS.append(SECRETS["EXTRA_ALLOWED_HOSTS"])
 
 
 # Application definition
@@ -41,10 +61,12 @@ INSTALLED_APPS = [
     'delay',
     "dashboards",
     "dashboard",
+    "admin_honeypot",
 ]
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -58,6 +80,9 @@ ROOT_URLCONF = 'eeggs_site.urls'
 CSRF_TRUSTED_ORIGINS = [
     "https://clever-dane-infinitely.ngrok-free.app"  # mteruel ngrok server
 ]
+if "CSRF_TRUSTED_ORIGINS" in SECRETS:
+    CSRF_TRUSTED_ORIGINS = [SECRETS["CSRF_TRUSTED_ORIGINS"]]
+
 
 TEMPLATES = [
     {
@@ -123,9 +148,38 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.0/howto/static-files/
 
-STATIC_URL = 'static/'
+STATIC_URL = '/static/'
+STATIC_ROOT = BASE_DIR / 'collected_static'
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# Static file serving.
+# https://whitenoise.readthedocs.io/en/stable/django.html#add-compression-and-caching-support
+STORAGES = {
+    # ...
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+    },
+}
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'file': {
+            'level': 'DEBUG',
+            'class': 'logging.FileHandler',
+            'filename': 'logs/debug.log',
+        },
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['file'],
+            'level': 'DEBUG',
+            'propagate': True,
+        },
+    },
+}
