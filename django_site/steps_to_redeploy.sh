@@ -25,3 +25,7 @@ python manage.py collectstatic --noinput
 
 echo "python manage.py runserver 0.0.0.0:8000"
 python manage.py runserver 0.0.0.0:8000
+
+EEGGS_PORT=2906
+echo "gunicorn eeggs_site.wsgi -b 127.0.0.1:${EEGGS_PORT}"
+gunicorn eeggs_site.wsgi -b 127.0.0.1:${EEGGS_PORT}
