@@ -499,7 +499,9 @@ int ping_pong_loop(char *password) {
     free(repo_name);
 
     if (password != NULL) {
-        snprintf(PING_URL, sizeof(PING_URL), "%s&password_to_win=%s", PING_URL, password);
+        // Add the password to the URL
+        strcat(PING_URL, "&password_to_win=");
+        strcat(PING_URL, password);
     }
     debug_printf("PING: URL: %s\n", PING_URL);
 
