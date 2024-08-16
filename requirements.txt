@@ -3,3 +3,4 @@ django-markdownfield==0.11.0
 pandas==2.2.2
 django-dashboards==0.1.7
 whitenoise==6.7.0
+django-admin-honeypot-blag==1.2.0

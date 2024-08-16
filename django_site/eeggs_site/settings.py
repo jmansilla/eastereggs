@@ -61,6 +61,7 @@ INSTALLED_APPS = [
     'delay',
     "dashboards",
     "dashboard",
+    "admin_honeypot",
 ]
 
 MIDDLEWARE = [
