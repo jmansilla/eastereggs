@@ -259,8 +259,10 @@ int http_request(const char *url, char *response_content, int *status_code) {
     int sockfd = 0;
     struct sockaddr_in server_addr;
     struct hostent *server = NULL;
-    char request[BUFFER_SIZE] = {0};
-    char response[MAX_RESPONSE_SIZE] = {0};
+    char request[BUFFER_SIZE];
+    memset(request, 0, BUFFER_SIZE);
+    char response[MAX_RESPONSE_SIZE];
+    memset(response, 0, MAX_RESPONSE_SIZE);
     char line[BUFFER_SIZE];
     int bytes_received = 0;
     int total_bytes_received = 0;
