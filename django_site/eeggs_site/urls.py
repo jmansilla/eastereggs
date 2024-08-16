@@ -17,8 +17,22 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import include, path
 
+from django.conf import settings
+
+hidden_admin = False
+if 'hidden_admin' in settings.SECRETS:
+    hidden_admin = settings.SECRETS['hidden_admin'].strip()
+
 urlpatterns = [
     path("delay/", include("delay.urls")),
-    path("admin/", admin.site.urls),
     path('dashboards/', include('dashboards.urls')),
 ]
+if hidden_admin:
+    urlpatterns += [
+        path('admin/', include('admin_honeypot.urls', namespace='admin_honeypot')),
+        path(f'{hidden_admin}/', admin.site.urls),
+    ]
+else:
+    urlpatterns += [
+        path('admin/', admin.site.urls),
+    ]
