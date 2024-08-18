@@ -11,7 +11,7 @@ from django.utils.timezone import now
 from delay.models import SOGroup, Deadline
 
 
-URL_PATH = '/delay/ping_pong'
+URL_PATH = '/challenge/ping_pong'
 
 C_MODULE_FOLDER = path.join(path.dirname(path.abspath(__file__)), '..', '..', '..', 'c_module')
 C_MODULE_FOLDER = path.realpath(C_MODULE_FOLDER)

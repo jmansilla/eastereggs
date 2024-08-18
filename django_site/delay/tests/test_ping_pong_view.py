@@ -8,7 +8,7 @@ from delay.models import SOGroup
 from delay.views import decrypt_group_name, UNKWON_USERID, HERE_IS_THE_PASSWORD_TEMPLATE
 
 
-URL_PATH = '/delay/ping_pong'
+URL_PATH = '/challenge/ping_pong'
 
 
 class TestDecryptGroupName(TestCase):

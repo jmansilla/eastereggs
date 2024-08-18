@@ -72,12 +72,12 @@ should be hardcoded in their repository.
 
 Compile the module using:
 ```
-gcc -o pingpong pingpong.c -lcurl
+gcc -o pingpong_example example_client.c
 ```
 
 Then execute with specific env variables
 ```
-PP_URL="http://localhost:2906/delay/ping_pong" PP_DEBUG=1 ./pingpong
+PP_URL="http://localhost:2906/challenge/ping_pong" PP_DEBUG=1 ./pingpong
 ```
 
 ### Handlers

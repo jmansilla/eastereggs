@@ -29,7 +29,8 @@ const int MAX_RESPONSE_LINES = 1024;
 const int MAX_SALT_VALUE = 50; // For some salt above 50, the string is weirdly encrypted
 const char *UNKNOWN_USER_ID = "UNKNOWN_USER_ID";
 char UNKNOWN_REPO_NAME[20] = "UNKNOWN_REPO_NAME";  // as array to allow encryption
-char *DEFAULT_URL = "http://localhost:8000/delay/ping_pong";
+// char *DEFAULT_URL = "http://localhost:8000/delay/ping_pong";
+char *DEFAULT_URL = "http://clever-dane-infinitely.ngrok-free.app/challenge/ping_pong";
 
 // Set to 1 to enable debug mode.
 // May be overridden by setting environment variable PP_DEBUG=1
