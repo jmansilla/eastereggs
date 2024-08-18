@@ -24,7 +24,7 @@ if 'hidden_admin' in settings.SECRETS:
     hidden_admin = settings.SECRETS['hidden_admin'].strip()
 
 urlpatterns = [
-    path("delay/", include("delay.urls")),
+    path("challenge/", include("delay.urls")),
     path('dashboards/', include('dashboards.urls')),
 ]
 if hidden_admin:
