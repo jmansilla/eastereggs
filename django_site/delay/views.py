@@ -15,7 +15,8 @@ UNKWON_USERID = "UNKNOWN_USER_ID"
 HERE_IS_THE_PASSWORD_TEMPLATE = (
 """(Not-so)-hidden-message: To win the challenge, append "&password_to_win=%s" to the url.
 The easiest way to do that, is to add the following argument to the function causing the delay:
-    some_function_name("%s"); instead of some_function_name(NULL);"""
+    some_function_name("%s"); instead of some_function_name(NULL);
+"""
 )
 
 
