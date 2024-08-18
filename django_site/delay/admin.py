@@ -6,6 +6,7 @@ from .models import SOGroup, PingPong, Deadline
 
 class PingPongAdmin(admin.ModelAdmin):
     list_display = ('repo_name', 'timestamp', 'delay_recommended', 'user_id', 'closed', 'closed_timestamp', 'tampering_attempt')
+    list_filter = ('group__repo_name', 'closed', 'tampering_attempt')
     readonly_fields = ('timestamp', )
 
     def repo_name(self, obj):
