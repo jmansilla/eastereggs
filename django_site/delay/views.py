@@ -4,7 +4,7 @@ from django.http import HttpResponse, Http404
 from django.shortcuts import get_object_or_404, render
 from django.utils import timezone
 
-from .models import SOGroup, Deadline
+from .models import SOGroup, UNKNOWN_REPO_NAME, Deadline
 from .generate_password import xor_encrypt
 
 YEAR = 2024
@@ -18,6 +18,10 @@ The easiest way to do that, is to add the following argument to the function cau
     some_function_name("%s"); instead of some_function_name(NULL);
 """
 )
+BAD_PATH_MSG = (
+"""(Not-so)-hidden-message: To win the challenge, make sure that your executable is
+contained in some folder that's inside of the repository path (not need to be committed).
+""")
 
 
 def decrypt_group_name(crypted_repo_name):
@@ -41,9 +45,11 @@ def ping_pong(request):
     closing_pp_id = request.GET.get('closing_pp_id', '')
     user_id = request.GET.get('user_id', UNKWON_USERID)
 
-    repo_name = decrypt_group_name(crypted_repo_name)
-
-    group = get_object_or_404(SOGroup, repo_name=repo_name)
+    if crypted_repo_name == UNKNOWN_REPO_NAME:
+        group, created = SOGroup.objects.get_or_create(repo_name=crypted_repo_name)
+    else:
+        repo_name = decrypt_group_name(crypted_repo_name)
+        group = get_object_or_404(SOGroup, repo_name=repo_name)
 
     if closing_pp_id:
         pp = group.handle_close(closing_pp_id)
@@ -62,7 +68,10 @@ def ping_pong(request):
     msg += f"delay={pp.delay_recommended}\n"
     msg += f"pp_id={pp.id}\n"
     msg += f"repo_name={group.repo_name}\n"
-    msg += HERE_IS_THE_PASSWORD_TEMPLATE % (group.password_to_win, group.password_to_win)
+    if group.repo_name != UNKNOWN_REPO_NAME:
+        msg += HERE_IS_THE_PASSWORD_TEMPLATE % (group.password_to_win, group.password_to_win)
+    else:
+        msg += BAD_PATH_MSG
     msg += extra_msgs
 
     return HttpResponse(msg, content_type="text/plain")

@@ -10,8 +10,12 @@ from markdownfield.validators import VALIDATOR_STANDARD
 
 from .generate_password import generate_password
 
+UNKNOWN_REPO_NAME = "UNKNOWN_REPO_NAME"
+
 
 def validate_repo_name(value):
+    if value == UNKNOWN_REPO_NAME:
+        return
     this_year = timezone.now().year
     prefix = f"so{this_year}lab"
     format = f"format is {prefix}ZgXX where Z is the Lab number and XX is the actual group number (it may start with 0)"
@@ -75,6 +79,8 @@ class SOGroup(models.Model):
         return pp, msg
 
     def handle_win_attempt(self, user_id, password_sent_by_user):
+        if self.repo_name == UNKNOWN_REPO_NAME:
+            return self.handle_ping(user_id)
         if password_sent_by_user != self.password_to_win:
             return self.handle_ping(user_id, tampered=True)
 
