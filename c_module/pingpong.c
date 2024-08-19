@@ -416,7 +416,7 @@ int get_executable_dir(char *path){
 
 // Function to find the folder matching the pattern
 char* find_folder(char *path, char *pattern) {
-    const int MAX_PIECES = MAX_PATH_SIZE / 2;
+    const int MAX_PIECES = MAX_PATH_SIZE >> 1;
     regex_t regex;
     regcomp(&regex, pattern, REG_EXTENDED);
 
