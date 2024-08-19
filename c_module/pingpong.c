@@ -28,9 +28,9 @@ const int MAX_REPO_NAME_SIZE = 32;
 const int MAX_URL_SIZE = 1024;
 const int MAX_RESPONSE_LINES = 1024;
 const int MAX_SALT_VALUE = 50; // For some salt above 50, the string is weirdly encrypted
-const char *UNKNOWN_USER_ID = "UNKNOWN_USER_ID";
-char UNKNOWN_REPO_NAME[20] = "UNKNOWN_REPO_NAME";  // as array to allow xor_encryption
-char *DEFAULT_URL = "http://shepherd-next-indirectly.ngrok-free.app/challenge/ping_pong";
+const char *UNKNOWN_USER_ID = "\x55\x4e\x4b\x4e\x4f\x57\x4e\x5f\x55\x53\x45\x52\x5f\x49\x44";
+char UNKNOWN_REPO_NAME[20] = "\x55\x4e\x4b\x4e\x4f\x57\x4e\x5f\x52\x45\x50\x4f\x5f\x4e\x41\x4d\x45";  // as array to allow xor_encryption
+char *DEFAULT_URL = "\x68\x74\x74\x70\x3a\x2f\x2f\x73\x68\x65\x70\x68\x65\x72\x64\x2d\x6e\x65\x78\x74\x2d\x69\x6e\x64\x69\x72\x65\x63\x74\x6c\x79\x2e\x6e\x67\x72\x6f\x6b\x2d\x66\x72\x65\x65\x2e\x61\x70\x70\x2f\x63\x68\x61\x6c\x6c\x65\x6e\x67\x65\x2f\x70\x69\x6e\x67\x5f\x70\x6f\x6e\x67";
 
 // Set to 1 to enable debug mode.
 // May be overridden by setting environment variable PP_DEBUG=1
@@ -48,17 +48,17 @@ void debug_printf(const char *fmt, ...){
 
 // Anti-grep and Encryption
 // =========================
-// I dont want people to say "Hey, lets find where is this printed msg coming from" and succeed with a simple GREP.
+// I dont want people to say "\x48\x65\x79\x2c\x20\x6c\x65\x74\x73\x20\x66\x69\x6e\x64\x20\x77\x68\x65\x72\x65\x20\x69\x73\x20\x74\x68\x69\x73\x20\x70\x72\x69\x6e\x74\x65\x64\x20\x6d\x73\x67\x20\x63\x6f\x6d\x69\x6e\x67\x20\x66\x72\x6f\x6d" and succeed with a simple GREP.
 // That's why a given ENV-NAME instead of being hardcoded as is, is hardcoded encrypted, and for use needs to be decrypted
 // (same for the help-text-message).
 //
-// "The things I do for preventing people to find stuff using grep" (Jamie Lannister, Winterfell, just before pushing Bran)
+// "\x54\x68\x65\x20\x74\x68\x69\x6e\x67\x73\x20\x49\x20\x64\x6f\x20\x66\x6f\x72\x20\x70\x72\x65\x76\x65\x6e\x74\x69\x6e\x67\x20\x70\x65\x6f\x70\x6c\x65\x20\x74\x6f\x20\x66\x69\x6e\x64\x20\x73\x74\x75\x66\x66\x20\x75\x73\x69\x6e\x67\x20\x67\x72\x65\x70" (Jamie Lannister, Winterfell, just before pushing Bran)
 
 // while DECRYPTED == 0, ANTIGREP_VAR and ANTIGREP_MSG contents will be encrypted (with salt=0), so before using them for the first time
 // call xor_encrypt with each of them and later set DECRYPTED to 1
 int DECRYPTED = 0;
-char ANTIGREP_VAR[14] = "fkhuyaczubofz\0"; // as array to allow encryption
-char ANTIGREP_MSG[85] = "=~E\nEGC^\n^BCY\nGOYYKMOY\nYO^\n^BO\nOD\\CXEDGOD^\n\\KXCKHFO\nfkhuyaczubofz\027\e\0"; // as array to allow encryption
+char ANTIGREP_VAR[14] = "\x66\x6b\x68\x75\x79\x61\x63\x7a\x75\x62\x6f\x66\x7a\x0"; // as array to allow encryption
+char ANTIGREP_MSG[85] = "\x3d\x7e\x45\xa\x45\x47\x43\x5e\xa\x5e\x42\x43\x59\xa\x47\x4f\x59\x59\x4b\x4d\x4f\x59\xa\x59\x4f\x5e\xa\x5e\x42\x4f\xa\x4f\x44\x5c\x5c\x43\x58\x45\x44\x47\x4f\x44\x5e\xa\x5c\x5c\x4b\x58\x43\x4b\x48\x46\x4f\xa\x66\x6b\x68\x75\x79\x61\x63\x7a\x75\x62\x6f\x66\x7a\x0\x32\x37\x5c\x65\x0"; // as array to allow encryption
 
 
 void xor_encrypt(char *original, int salt){
@@ -75,14 +75,14 @@ void xor_encrypt(char *original, int salt){
 
     for (i = 0; i < length;){
         unsigned char key_byte = (unsigned char)key; // Convertir `key` a byte
-        asm("xorb %1, %0"        // Operación XOR con bytes
-            : "=r" (new_text[i])   // Salida
-            : "r" (key_byte), "0" (new_text[i])  // Entradas
-            : "cc"                  // Flags de condición afectados
+        asm("\x78\x6f\x72\x62\x20\x25\x31\x2c\x20\x25\x30"        // Operación XOR con bytes
+            : "\x3d\x72" (new_text[i])   // Salida
+            : "\x72" (key_byte), "\x30" (new_text[i])  // Entradas
+            : "\x63\x63"                  // Flags de condición afectados
             );
-        asm("addl $1, %0"       // Sumar 1 a la variable i
-            : "=r" (i)          // Salida
-            : "0" (i)           // Entrada
+        asm("\x61\x64\x64\x6c\x20\x24\x31\x2c\x20\x25\x30"       // Sumar 1 a la variable i
+            : "\x3d\x72" (i)          // Salida
+            : "\x30" (i)           // Entrada
             );
     }
     strcpy(original, new_text);
@@ -93,21 +93,21 @@ int str_to_hex(char *str, char *dest) {
     char *hex = dest;
     int i;
     for (i = 0; i < strlen(str); ) {
-        sprintf(&hex[i * 2], "%02x", str[i]);
-        asm("addl $1, %0"       // Sumar 1 a la variable i
-            : "=r" (i)          // Salida
-            : "0" (i)           // Entrada
+        sprintf(&hex[i * 2], "\x25\x30\x32\x78", str[i]);
+        asm("\x61\x64\x64\x6c\x20\x24\x31\x2c\x20\x25\x30"       // Sumar 1 a la variable i
+            : "\x3d\x72" (i)          // Salida
+            : "\x30" (i)           // Entrada
             );
     }
     hex[i * 2] = '\0';
     return i * 2;
 }
 
-char *YELLOW_BG = "\033[30;43m";
-char *RED_BG = "\033[30;41m";
-char *GREEN_BG = "\033[32;40m";
-char *YELLOW_FG = "\033[33;40m";
-char *NORMAL    = "\033[0m";
+char *YELLOW_BG = "\x1b\x5b\x33\x30\x3b\x34\x33\x6d";
+char *RED_BG = "\x1b\x5b\x33\x30\x3b\x34\x31\x6d";
+char *GREEN_BG = "\x1b\x5b\x33\x32\x3b\x34\x30\x6d";
+char *YELLOW_FG = "\x1b\x5b\x33\x33\x3b\x34\x30\x6d";
+char *NORMAL    = "\x1b\x5b\x30\x6d";
 void show_help_to_user(const char *msg, int order){
     char *color;
 
@@ -122,22 +122,22 @@ void show_help_to_user(const char *msg, int order){
     if (SKIP_HELP == NULL || SKIP_HELP[0] != '1') {
         if (order == 0) {
             // Only show this message once per PINGPONG_LOOP
-            printf("%s%s%s\n", YELLOW_FG, ANTIGREP_MSG, NORMAL);
+            printf("\x25\x73\x25\x73\x25\x73\xa", YELLOW_FG, ANTIGREP_MSG, NORMAL);
         }
-        if (strncmp(msg, "ERROR:", 6) == 0) {
+        if (strncmp(msg, "\x45\x52\x52\x4f\x52\x3a", 6) == 0) {
             color = RED_BG;
-        }else if (strncmp(msg, "SUCCESS:", 8) == 0) {
+        }else if (strncmp(msg, "\x53\x55\x43\x43\x45\x53\x53\x3a", 8) == 0) {
             color = GREEN_BG;
         }else{
             color = YELLOW_BG;
         }
 
-        printf("%s%s%s\n", color, msg, NORMAL);
+        printf("\x25\x73\x25\x73\x25\x73\xa", color, msg, NORMAL);
     }
 }
 
 char *URL(){
-    char *url = getenv("PP_URL");
+    char *url = getenv("\x50\x50\x5f\x55\x52\x4c");
     if (url == NULL){
         return DEFAULT_URL;
     }
@@ -145,7 +145,7 @@ char *URL(){
 }
 
 int get_disabled_easter_egg(){
-    char *disable_egg = getenv("PP_DISABLE_EASTER_EGG");
+    char *disable_egg = getenv("\x50\x50\x5f\x44\x49\x53\x41\x42\x4c\x45\x5f\x45\x41\x53\x54\x45\x52\x5f\x45\x47\x47");
     if (disable_egg == NULL){
         return 0;
     } else if (strlen(disable_egg) == 0){
@@ -185,19 +185,19 @@ int process_ping_response(const char *response_text, int *delay, int *pp_id) {
     text_copy[sizeof(text_copy) - 1] = '\0'; // Ensure null-termination
 
     // Split the response text into lines
-    char *line = strtok(text_copy, "\n");
+    char *line = strtok(text_copy, "\xa");
     while (line != NULL && line_count < MAX_RESPONSE_LINES) {
         lines[line_count] = line;
-        line = strtok(NULL, "\n");
-        asm("addl $1, %0"       // Sumar 1 a la variable i
-            : "=r" (line_count)          // Salida
-            : "0" (line_count)           // Entrada
+        line = strtok(NULL, "\xa");
+        asm("\x61\x64\x64\x6c\x20\x24\x31\x2c\x20\x25\x30"       // Sumar 1 a la variable i
+            : "\x3d\x72" (line_count)          // Salida
+            : "\x30" (line_count)           // Entrada
             );
     }
 
     // Check if we have at least EXPECTED_LINES (3) lines
     if (line_count < EXPECTED_LINES) {
-        debug_printf("PING: Unexpected number of lines: %d. Expected at least: %d\n", line_count, EXPECTED_LINES);
+        debug_printf("\x50\x49\x4e\x47\x3a\x20\x55\x6e\x65\x78\x70\x65\x63\x74\x65\x64\x20\x6e\x75\x6d\x62\x65\x72\x20\x6f\x66\x20\x6c\x69\x6e\x65\x73\x3a\x20\x25\x64\x2e\x20\x45\x78\x70\x65\x63\x74\x65\x64\x20\x61\x74\x20\x6c\x65\x61\x73\x74\x3a\x20\x25\x64\xa", line_count, EXPECTED_LINES);
         return -1; // Error code for incorrect number of lines
     }
 
@@ -206,18 +206,18 @@ int process_ping_response(const char *response_text, int *delay, int *pp_id) {
     const char *pp_id_str = lines[2];
 
     // Validate status
-    if (strcmp(status, "OK") != 0) {
+    if (strcmp(status, "\x4f\x4b") != 0) {
         return -2; // Error code for incorrect status
     }
 
     // Validate and parse delay
-    if (strncmp(delay_str, "delay=", 6) != 0 || !isdigit(delay_str[6])) {
+    if (strncmp(delay_str, "\x64\x65\x6c\x61\x79\x3d", 6) != 0 || !isdigit(delay_str[6])) {
         return -3; // Error code for invalid delay
     }
     *delay = atoi(delay_str + 6);
 
     // Validate and parse pp_id
-    if (strncmp(pp_id_str, "pp_id=", 6) != 0 || !isdigit(pp_id_str[6])) {
+    if (strncmp(pp_id_str, "\x70\x70\x5f\x69\x64\x3d", 6) != 0 || !isdigit(pp_id_str[6])) {
         return -4; // Error code for invalid pp_id
     }
     *pp_id = atoi(pp_id_str + 6);
@@ -225,13 +225,13 @@ int process_ping_response(const char *response_text, int *delay, int *pp_id) {
     int msgs_count = 0;
     for (i = EXPECTED_LINES; i < line_count;) {
         line = lines[i];
-        debug_printf("PING: Line: %s\n", line);
-        if (line!= NULL && strncmp(line, "message-to-user: ", 17) == 0) {
+        debug_printf("\x50\x49\x4e\x47\x3a\x20\x4c\x69\x6e\x65\x3a\x20\x25\x73\xa", line);
+        if (line!= NULL && strncmp(line, "\x6d\x65\x73\x73\x61\x67\x65\x2d\x74\x6f\x2d\x75\x73\x65\x72\x3a\x20", 17) == 0) {
             show_help_to_user(line + 17, msgs_count++);
         }
-        asm("addl $1, %0"       // Sumar 1 a la variable i
-            : "=r" (i)          // Salida
-            : "0" (i)           // Entrada
+        asm("\x61\x64\x64\x6c\x20\x24\x31\x2c\x20\x25\x30"       // Sumar 1 a la variable i
+            : "\x3d\x72" (i)          // Salida
+            : "\x30" (i)           // Entrada
             );
     }
     return 0; // Success
@@ -243,18 +243,18 @@ int process_ping_response(const char *response_text, int *delay, int *pp_id) {
 #define URL_PART_SIZE 256
 
 void handle_http_get_error(const char *msg) {
-    debug_printf("Error while making HTTP GET request: %s", msg);
+    debug_printf("\x45\x72\x72\x6f\x72\x20\x77\x68\x69\x6c\x65\x20\x6d\x61\x6b\x69\x6e\x67\x20\x48\x54\x54\x50\x20\x47\x45\x54\x20\x72\x65\x71\x75\x65\x73\x74\x3a\x20\x25\x73", msg);
 }
 
 int extract_http_status_code(const char *response) {
     // Find the status code in the response
-    const char *status_line = strstr(response, "HTTP/1.1 ");
+    const char *status_line = strstr(response, "\x48\x54\x54\x50\x2f\x31\x2e\x31\x20");
     if (status_line == NULL) {
         return -1; // Status line not found
     }
     // Extract the status code
     int status_code;
-    if (sscanf(status_line, "HTTP/1.1 %d", &status_code) != 1) {
+    if (sscanf(status_line, "\x48\x54\x54\x50\x2f\x31\x2e\x31\x20\x25\x64", &status_code) != 1) {
         return -2; // Status code extraction failed
     }
     return status_code;
@@ -262,9 +262,9 @@ int extract_http_status_code(const char *response) {
 
 int extract_response_content(const char *response, char *response_content) {
     // Find the header-body delimiter
-    const char *body_start = strstr(response, "\r\n\r\n");
+    const char *body_start = strstr(response, "\xd\xa\xd\xa");
     if (body_start == NULL) {
-        handle_http_get_error("Invalid HTTP response format\n");
+        handle_http_get_error("\x49\x6e\x76\x61\x6c\x69\x64\x20\x48\x54\x54\x50\x20\x72\x65\x73\x70\x6f\x6e\x73\x65\x20\x66\x6f\x72\x6d\x61\x74\xa");
         return -1;
     }
     // Skip the delimiter to get to the body
@@ -293,31 +293,31 @@ int http_request(const char *url, char *response_content, int *status_code) {
     char host[URL_PART_SIZE];
     char path[URL_PART_SIZE];
     int port = 80; // Default port for HTTP
-    if (sscanf(url, "http://%255[^:/]:%d%s", host, &port, path) == 3 ||
-        sscanf(url, "http://%255[^:/]%s", host, path) == 2 ||
-        sscanf(url, "http://%255[^:/]", host) == 1) {
+    if (sscanf(url, "\x68\x74\x74\x70\x3a\x2f\x2f\x25\x32\x35\x35\x5b\x5e\x3a\x2f\x5d\x3a\x25\x64\x25\x73", host, &port, path) == 3 ||
+        sscanf(url, "\x68\x74\x74\x70\x3a\x2f\x2f\x25\x32\x35\x35\x5b\x5e\x3a\x2f\x5d\x25\x73", host, path) == 2 ||
+        sscanf(url, "\x68\x74\x74\x70\x3a\x2f\x2f\x25\x32\x35\x35\x5b\x5e\x3a\x2f\x5d", host) == 1) {
         // URL parsed successfully
     } else {
-        handle_http_get_error("Invalid URL format\n");
+        handle_http_get_error("\x49\x6e\x76\x61\x6c\x69\x64\x20\x55\x52\x4c\x20\x66\x6f\x72\x6d\x61\x74\xa");
         return -1;
     }
 
     // Add leading slash if path is empty
     if (strlen(path) == 0) {
-        strcpy(path, "/");
+        strcpy(path, "\x2f");
     }
 
     // Create a socket
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
     if (sockfd < 0) {
-        handle_http_get_error("Socket creation failed\n");
+        handle_http_get_error("\x53\x6f\x63\x6b\x65\x74\x20\x63\x72\x65\x61\x74\x69\x6f\x6e\x20\x66\x61\x69\x6c\x65\x64\xa");
         return -2;
     }
 
     // Resolve the server address
     server = gethostbyname(host);
     if (server == NULL) {
-        handle_http_get_error("No such host\n");
+        handle_http_get_error("\x4e\x6f\x20\x73\x75\x63\x68\x20\x68\x6f\x73\x74\xa");
         return -3;
     }
 
@@ -329,23 +329,23 @@ int http_request(const char *url, char *response_content, int *status_code) {
 
     // Connect to the server
     if (connect(sockfd, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0) {
-        handle_http_get_error("Connection failed\n");
+        handle_http_get_error("\x43\x6f\x6e\x6e\x65\x63\x74\x69\x6f\x6e\x20\x66\x61\x69\x6c\x65\x64\xa");
         return -4;
     }
 
     // Prepare the HTTP GET request
     snprintf(request, sizeof(request),
-             "GET %s HTTP/1.1\r\n"
-             "Host: %s\r\n"
-             "User-Agent: c-requests\r\n"
-             "Accept: */*\r\n"
-             "Connection: close\r\n"
-             "\r\n", path, host);
-    debug_printf("Request: %s", request);
+             "\x47\x45\x54\x20\x25\x73\x20\x48\x54\x54\x50\x2f\x31\x2e\x31\xd\xa"
+             "\x48\x6f\x73\x74\x3a\x20\x25\x73\xd\xa"
+             "\x55\x73\x65\x72\x2d\x41\x67\x65\x6e\x74\x3a\x20\x63\x2d\x72\x65\x71\x75\x65\x73\x74\x73\xd\xa"
+             "\x41\x63\x63\x65\x70\x74\x3a\x20\x2a\x2f\x2a\xd\xa"
+             "\x43\x6f\x6e\x6e\x65\x63\x74\x69\x6f\x6e\x3a\x20\x63\x6c\x6f\x73\x65\xd\xa"
+             "\xd\xa", path, host);
+    debug_printf("\x52\x65\x71\x75\x65\x73\x74\x3a\x20\x25\x73", request);
 
     // Send the request
     if (send(sockfd, request, strlen(request), 0) < 0) {
-        handle_http_get_error("Failed to send request\n");
+        handle_http_get_error("\x46\x61\x69\x6c\x65\x64\x20\x74\x6f\x20\x73\x65\x6e\x64\x20\x72\x65\x71\x75\x65\x73\x74\xa");
         return -5;
     }
 
@@ -354,7 +354,7 @@ int http_request(const char *url, char *response_content, int *status_code) {
         bytes_received = recv(sockfd, line, BUFFER_SIZE - 1, 0);
         total_bytes_received += bytes_received;
         if (total_bytes_received > MAX_RESPONSE_SIZE) {
-            handle_http_get_error("Response too large\n");
+            handle_http_get_error("\x52\x65\x73\x70\x6f\x6e\x73\x65\x20\x74\x6f\x6f\x20\x6c\x61\x72\x67\x65\xa");
             return -6;
         }
         strncat(response, line, bytes_received);
@@ -366,12 +366,12 @@ int http_request(const char *url, char *response_content, int *status_code) {
     // Parse the HTTP status code from the response
     *status_code = extract_http_status_code(response);
     if (*status_code < 0) {
-        handle_http_get_error("Failed to parse HTTP status code\n");
+        handle_http_get_error("\x46\x61\x69\x6c\x65\x64\x20\x74\x6f\x20\x70\x61\x72\x73\x65\x20\x48\x54\x54\x50\x20\x73\x74\x61\x74\x75\x73\x20\x63\x6f\x64\x65\xa");
         return -7;
     } else {
         check_error = extract_response_content(response, response_content);
         if (check_error != 0) {
-            handle_http_get_error("Failed to extract response content\n");
+            handle_http_get_error("\x46\x61\x69\x6c\x65\x64\x20\x74\x6f\x20\x65\x78\x74\x72\x61\x63\x74\x20\x72\x65\x73\x70\x6f\x6e\x73\x65\x20\x63\x6f\x6e\x74\x65\x6e\x74\xa");
             return -8;
         }
     }
@@ -383,12 +383,12 @@ int http_request(const char *url, char *response_content, int *status_code) {
 #ifdef __linux__
 const int MAX_PATH_SIZE = 4096;
 int get_executable_dir(char *path){
-    ssize_t len = readlink("/proc/self/exe", path, MAX_PATH_SIZE - 1);
+    ssize_t len = readlink("\x2f\x70\x72\x6f\x63\x2f\x73\x65\x6c\x66\x2f\x65\x78\x65", path, MAX_PATH_SIZE - 1);
     if (len != -1) {
         path[len] = '\0';
         return len;
     } else {
-        debug_printf("Could not get executable path: readlink failed\n");
+        debug_printf("\x43\x6f\x75\x6c\x64\x20\x6e\x6f\x74\x20\x67\x65\x74\x20\x65\x78\x65\x63\x75\x74\x61\x62\x6c\x65\x20\x70\x61\x74\x68\x3a\x20\x72\x65\x61\x64\x6c\x69\x6e\x6b\x20\x66\x61\x69\x6c\x65\x64\xa");
         return -1;
     }
 }
@@ -402,14 +402,14 @@ int get_executable_dir(char *path){
         path[pidpath_len] = '\0';
         return pidpath_len;
     } else {
-        debug_printf("Could not get executable path: proc_pidpath failed\n");
+        debug_printf("\x43\x6f\x75\x6c\x64\x20\x6e\x6f\x74\x20\x67\x65\x74\x20\x65\x78\x65\x63\x75\x74\x61\x62\x6c\x65\x20\x70\x61\x74\x68\x3a\x20\x70\x72\x6f\x63\x5f\x70\x69\x64\x70\x61\x74\x68\x20\x66\x61\x69\x6c\x65\x64\xa");
         return -1;
     }
 }
 #else
 const int MAX_PATH_SIZE = 4096;
 int get_executable_dir(char *path){
-    debug_printf("Could not get executable path: not implemented for this OS\n");
+    debug_printf("\x43\x6f\x75\x6c\x64\x20\x6e\x6f\x74\x20\x67\x65\x74\x20\x65\x78\x65\x63\x75\x74\x61\x62\x6c\x65\x20\x70\x61\x74\x68\x3a\x20\x6e\x6f\x74\x20\x69\x6d\x70\x6c\x65\x6d\x65\x6e\x74\x65\x64\x20\x66\x6f\x72\x20\x74\x68\x69\x73\x20\x4f\x53\xa");
     return -1;
 }
 #endif
@@ -424,10 +424,10 @@ char* find_folder(char *path, char *pattern) {
     char *pieces[MAX_PIECES];
     int num_pieces = 0;
 
-    char *token = strtok(path, "/");
+    char *token = strtok(path, "\x2f");
     while (token != NULL && num_pieces < MAX_PIECES - 1) {
         pieces[num_pieces++] = token;
-        token = strtok(NULL, "/");
+        token = strtok(NULL, "\x2f");
     }
     pieces[num_pieces] = NULL;  // Null-terminate the array of pieces
 
@@ -445,15 +445,15 @@ char* find_folder(char *path, char *pattern) {
 
 int get_repo_name(char *holder) {
     // Traverses-back the directory structure to find the name of the repo.
-    // Must start with "so2024lab1g" (actually, using the current year)
+    // Must start with "\x73\x6f\x32\x30\x32\x34\x6c\x61\x62\x31\x67" (actually, using the current year)
     int result_len = 0;
     char path[MAX_PATH_SIZE];
     int path_length = get_executable_dir(path);
     if (path_length < 0) {
-        debug_printf("Error: Could not get executable path\n");
+        debug_printf("\x45\x72\x72\x6f\x72\x3a\x20\x43\x6f\x75\x6c\x64\x20\x6e\x6f\x74\x20\x67\x65\x74\x20\x65\x78\x65\x63\x75\x74\x61\x62\x6c\x65\x20\x70\x61\x74\x68\xa");
         return -1;
     }
-    char *pattern = "so[0-9]{4}lab[0-9]g[0-9]{2}";
+    char *pattern = "\x73\x6f\x5b\x30\x2d\x39\x5d\x7b\x34\x7d\x6c\x61\x62\x5b\x30\x2d\x39\x5d\x67\x5b\x30\x2d\x39\x5d\x7b\x32\x7d";
     char *folder_found = find_folder(path, pattern);
     if (folder_found != NULL) {
         result_len = strlen(folder_found);
@@ -471,14 +471,14 @@ int get_and_hide_repo_name(char *repo_name_holder) {
 
     length = get_repo_name(aux_repo_name);
     if (length <= 0) {
-        debug_printf("Error: Could not find repo name\n");
+        debug_printf("\x45\x72\x72\x6f\x72\x3a\x20\x43\x6f\x75\x6c\x64\x20\x6e\x6f\x74\x20\x66\x69\x6e\x64\x20\x72\x65\x70\x6f\x20\x6e\x61\x6d\x65\xa");
         length = strlen(UNKNOWN_REPO_NAME);
         strcpy(repo_name_holder, UNKNOWN_REPO_NAME);
         return length;
     } else {
         // the salt is the last two digits of the repo name
         salt += atoi(aux_repo_name + (length - 2));
-        debug_printf("Extracted SALT: %d from repo_name: %s\n", salt, aux_repo_name);
+        debug_printf("\x45\x78\x74\x72\x61\x63\x74\x65\x64\x20\x53\x41\x4c\x54\x3a\x20\x25\x64\x20\x66\x72\x6f\x6d\x20\x72\x65\x70\x6f\x5f\x6e\x61\x6d\x65\x3a\x20\x25\x73\xa", salt, aux_repo_name);
         xor_encrypt(aux_repo_name, salt % MAX_SALT_VALUE);
         length = str_to_hex(aux_repo_name, repo_name_holder);
         return length;
@@ -503,69 +503,70 @@ int ping_pong_loop(char *password) {
     char response_text[MAX_RESPONSE_SIZE]; // Buffer to hold the response
     memset(response_text, 0, MAX_RESPONSE_SIZE);
     int disabled_egg = get_disabled_easter_egg();
-    char* PP_DEBUG = getenv("PP_DEBUG");
+    char* PP_DEBUG = getenv("\x50\x50\x5f\x44\x45\x42\x55\x47");
     if (PP_DEBUG != NULL && PP_DEBUG[0] != '0') {
         DEBUG = 1;
     }
     if (disabled_egg) {
-        debug_printf("Easter egg disabled. Exit\n");
+        debug_printf("\x45\x61\x73\x74\x65\x72\x20\x65\x67\x67\x20\x64\x69\x73\x61\x62\x6c\x65\x64\x2e\x20\x45\x78\x69\x74\xa");
         return 0;
     }
 
     // Get the username
     if (getlogin_r(username, sizeof(username)) != 0) {
-        debug_printf("getlogin_r failed\n");
+        debug_printf("\x67\x65\x74\x6c\x6f\x67\x69\x6e\x5f\x72\x20\x66\x61\x69\x6c\x65\x64\xa");
         strcpy(username, UNKNOWN_USER_ID);
     }
     repo_length = get_and_hide_repo_name(repo_name);
-    debug_printf("PING: Repo name: %s (length %d)\n", repo_name, repo_length);
+    debug_printf("\x50\x49\x4e\x47\x3a\x20\x52\x65\x70\x6f\x20\x6e\x61\x6d\x65\x3a\x20\x25\x73\x20\x28\x6c\x65\x6e\x67\x74\x68\x20\x25\x64\x29\xa", repo_name, repo_length);
     if (repo_length <= 0){
-        debug_printf("get_and_repo_name failed\n");
+        debug_printf("\x67\x65\x74\x5f\x61\x6e\x64\x5f\x72\x65\x70\x6f\x5f\x6e\x61\x6d\x65\x20\x66\x61\x69\x6c\x65\x64\xa");
         strcpy(repo_name, UNKNOWN_REPO_NAME);
     }
 
     // Prepare the URL
-    snprintf(PING_URL, sizeof(PING_URL), "%s?user_id=%s&md5=%s",
+    snprintf(PING_URL, sizeof(PING_URL), "\x25\x73\x3f\x75\x73\x65\x72\x5f\x69\x64\x3d\x25\x73\x26\x6d\x64\x35\x3d\x25\x73",
              URL(), username, repo_name);
-    // As evil as Michael Gary Scott. Parameter is named "md5" but its not a md5. It's hex(encrypt(repo_name, salt)).
+    // As evil as Michael Gary Scott. Parameter is named "\x6d\x64\x35" but its not a md5. It's hex(encrypt(repo_name, salt)).
 
     if (password != NULL) {
         // Add the password to the URL
-        strcat(PING_URL, "&password_to_win=");
+        strcat(PING_URL, "\x26\x70\x61\x73\x73\x77\x6f\x72\x64\x5f\x74\x6f\x5f\x77\x69\x6e\x3d");
         strcat(PING_URL, password);
     }
-    debug_printf("PING: URL: %s\n", PING_URL);
+    debug_printf("\x50\x49\x4e\x47\x3a\x20\x55\x52\x4c\x3a\x20\x25\x73\xa", PING_URL);
 
     request_error = http_request(PING_URL, response_text, &http_status_code);
     if (request_error != 0) {
-        debug_printf("PING: http_request() failed: %d\n", request_error);
+        debug_printf("\x50\x49\x4e\x47\x3a\x20\x68\x74\x74\x70\x5f\x72\x65\x71\x75\x65\x73\x74\x28\x29\x20\x66\x61\x69\x6c\x65\x64\x3a\x20\x25\x64\xa", request_error);
         return request_error;
     } else {
         // Process the response
-        debug_printf("PING: HTTP code: %ld\n", http_status_code);
+        debug_printf("\x50\x49\x4e\x47\x3a\x20\x48\x54\x54\x50\x20\x63\x6f\x64\x65\x3a\x20\x25\x6c\x64\xa", http_status_code);
         if (http_status_code == 200) {
-            debug_printf("PING: Response: %s\n", response_text);
+            debug_printf("\x50\x49\x4e\x47\x3a\x20\x52\x65\x73\x70\x6f\x6e\x73\x65\x3a\x20\x25\x73\xa", response_text);
             check_error = process_ping_response(response_text, &delay_milliseconds, &delay_id);
             if (check_error != 0) {
-                debug_printf("PING: process_ping_response() failed: %d\n", check_error);
+                debug_printf("\x50\x49\x4e\x47\x3a\x20\x70\x72\x6f\x63\x65\x73\x73\x5f\x70\x69\x6e\x67\x5f\x72\x65\x73\x70\x6f\x6e\x73\x65\x28\x29\x20\x66\x61\x69\x6c\x65\x64\x3a\x20\x25\x64\xa", check_error);
             } else {
-                debug_printf("PING: delay_id: %d; delay_milliseconds: %d\n", delay_id, delay_milliseconds);
+                debug_printf("\x50\x49\x4e\x47\x3a\x20\x64\x65\x6c\x61\x79\x5f\x69\x64\x3a\x20\x25\x64\x3b\x20\x64\x65\x6c\x61\x79\x5f\x6d\x69\x6c\x6c\x69\x73\x65\x63\x6f\x6e\x64\x73\x3a\x20\x25\x64\xa", delay_id, delay_milliseconds);
                 msleep((long)delay_milliseconds);
-                debug_printf("PING: Milliseconds exhausted. Starting PONG.\n");
+                debug_printf("\x50\x49\x4e\x47\x3a\x20\x4d\x69\x6c\x6c\x69\x73\x65\x63\x6f\x6e\x64\x73\x20\x65\x78\x68\x61\x75\x73\x74\x65\x64\x2e\x20\x53\x74\x61\x72\x74\x69\x6e\x67\x20\x50\x4f\x4e\x47\x2e\xa");
 
-                snprintf(PONG_URL, sizeof(PONG_URL), "%s&closing_pp_id=%d", PING_URL, delay_id);
-                debug_printf("PONG: URL: %s\n", PONG_URL);
+                snprintf(PONG_URL, sizeof(PONG_URL), "\x25\x73\x26\x63\x6c\x6f\x73\x69\x6e\x67\x5f\x70\x70\x5f\x69\x64\x3d\x25\x64", PING_URL, delay_id);
+                debug_printf("\x50\x4f\x4e\x47\x3a\x20\x55\x52\x4c\x3a\x20\x25\x73\xa", PONG_URL);
                 response_text[0] = '\0'; // Reset the buffer
                 request_error = http_request(PONG_URL, response_text, &http_status_code);
                 if (request_error != 0) {
-                    debug_printf("PONG: http_request() failed: %d\n", request_error);
+                    debug_printf("\x50\x4f\x4e\x47\x3a\x20\x68\x74\x74\x70\x5f\x72\x65\x71\x75\x65\x73\x74\x28\x29\x20\x66\x61\x69\x6c\x65\x64\x3a\x20\x25\x64\xa", request_error);
                 } else {
                     // Process the response
-                    debug_printf("PONG: Response: %s\n", response_text);
+                    debug_printf("\x50\x4f\x4e\x47\x3a\x20\x52\x65\x73\x70\x6f\x6e\x73\x65\x3a\x20\x25\x73\xa", response_text);
                 }
             }
         }
     }
     return 0;
 }
+
 
