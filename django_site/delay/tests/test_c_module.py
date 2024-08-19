@@ -8,7 +8,7 @@ from django.test import LiveServerTestCase
 from django.utils.timezone import now
 
 
-from delay.models import SOGroup, Deadline
+from delay.models import SOGroup, UNKNOWN_REPO_NAME, Deadline
 
 
 URL_PATH = '/challenge/ping_pong'
@@ -64,6 +64,15 @@ class TestRunCompiled(LiveServerTestCase):
         self.assertIn(b'delay=%d' % number, execution.stderr)
         execution = self.execute_ping_pong(verbose_mode=False)
         self.assertEqual(b'', execution.stderr)
+
+    def test_unkown_repo_name_creates_a_default_group(self):
+        other_folder_name = 'yaddayadda'
+        self.folder_path = self.create_tmp_folder_and_copy_and_compile(
+            other_folder_name
+        )
+        execution = self.execute_ping_pong(verbose_mode=True)
+        self.assertIn(UNKNOWN_REPO_NAME.encode('utf-8'), execution.stderr)
+        self.assertEqual(1, SOGroup.objects.filter(repo_name=UNKNOWN_REPO_NAME).count())
 
     def test_no_group_means_a_404(self):
         self.group.delete()
