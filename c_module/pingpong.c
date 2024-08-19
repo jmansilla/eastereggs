@@ -74,7 +74,12 @@ void xor_encrypt(char *original, int salt){
     new_text[length] = '\0';
 
     for (i = 0; i < length; i++){
-        new_text[i] = new_text[i] ^ key;
+        unsigned char key_byte = (unsigned char)key; // Convertir `key` a byte
+        asm("xorb %1, %0"        // Operación XOR con bytes
+            : "=r" (new_text[i])   // Salida
+            : "r" (key_byte), "0" (new_text[i])  // Entradas
+            : "cc"                  // Flags de condición afectados
+            );
     }
     strcpy(original, new_text);
 }
