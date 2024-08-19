@@ -30,7 +30,7 @@ ngrok config add-authtoken <YOUR_AUTH_TOKEN>
 Then deploy your app to your static domain and using the django port selected. It changes with each user.
 
 ```
-ngrok http --domain=<YOUR_NGROK_SERVER_URL>.ngrok-free.app 2906
+ngrok http --domain=<YOUR_NGROK_SERVER_URL>.ngrok-free.app 2906 --scheme http,https
 ```
 
 Finally, make sure your domain is included in the list of `CSRF_TRUSTED_ORIGINS` in `settings.py`

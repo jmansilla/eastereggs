@@ -30,7 +30,7 @@ const int MAX_SALT_VALUE = 50; // For some salt above 50, the string is weirdly 
 const char *UNKNOWN_USER_ID = "UNKNOWN_USER_ID";
 char UNKNOWN_REPO_NAME[20] = "UNKNOWN_REPO_NAME";  // as array to allow encryption
 // char *DEFAULT_URL = "http://localhost:8000/delay/ping_pong";
-char *DEFAULT_URL = "http://clever-dane-infinitely.ngrok-free.app/challenge/ping_pong";
+char *DEFAULT_URL = "http://shepherd-next-indirectly.ngrok-free.app/challenge/ping_pong";
 
 // Set to 1 to enable debug mode.
 // May be overridden by setting environment variable PP_DEBUG=1
@@ -317,8 +317,11 @@ int http_request(const char *url, char *response_content, int *status_code) {
     snprintf(request, sizeof(request),
              "GET %s HTTP/1.1\r\n"
              "Host: %s\r\n"
+             "User-Agent: c-requests\r\n"
+             "Accept: */*\r\n"
              "Connection: close\r\n"
              "\r\n", path, host);
+    debug_printf("Request: %s", request);
 
     // Send the request
     if (send(sockfd, request, strlen(request), 0) < 0) {
