@@ -362,34 +362,35 @@ int http_request(const char *url, char *response_content, int *status_code) {
 /* SECTION get_repo_name */
 #ifdef __linux__
 const int MAX_PATH_SIZE = 4096;
-char *get_executable_dir() {
-    char *path = calloc(MAX_PATH_SIZE, sizeof(char));
+int get_executable_dir(char *path){
     ssize_t len = readlink("/proc/self/exe", path, MAX_PATH_SIZE - 1);
     if (len != -1) {
         path[len] = '\0';
-        return path;
+        return len;
     } else {
-        free(path);
-        return NULL;
+        debug_printf("Could not get executable path: readlink failed\n");
+        return -1;
     }
 }
 #elif __APPLE__
 #include <libproc.h>
 const int MAX_PATH_SIZE = PROC_PIDPATHINFO_MAXSIZE;
-char *get_executable_dir() {
-    char *path = calloc(MAX_PATH_SIZE, sizeof(char));
+int get_executable_dir(char *path){
     pid_t pid = getpid();
-    if (proc_pidpath(pid, path, MAX_PATH_SIZE) > 0) {
-        path[MAX_PATH_SIZE - 1] = '\0';
-        return path;
+    int pidpath_len = proc_pidpath(pid, path, MAX_PATH_SIZE);
+    if (pidpath_len > 0) {
+        path[pidpath_len] = '\0';
+        return pidpath_len;
     } else {
-        free(path);
-        return NULL;
+        debug_printf("Could not get executable path: proc_pidpath failed\n");
+        return -1;
     }
 }
 #else
-char *get_executable_dir() {
-    return NULL;
+const int MAX_PATH_SIZE = 4096;
+int get_executable_dir(char *path){
+    debug_printf("Could not get executable path: not implemented for this OS\n");
+    return -1;
 }
 #endif
 
@@ -427,12 +428,16 @@ char *get_repo_name() {
     // Must start with "so2024lab1g" (actually, using the current year)
     // Returns NULL if not found, or a pointer to the repo name (that must be freed)
     char *result = NULL;
-    char *path = get_executable_dir();
+    char path[MAX_PATH_SIZE];
+    int path_length = get_executable_dir(path);
+    if (path_length < 0) {
+        debug_printf("Error: Could not get executable path\n");
+        return NULL;
+    }
     char *pattern = "so[0-9]{4}lab[0-9]g[0-9]{2}";
     char *repo_name = find_folder(path, pattern);
-    free(path);
     if (repo_name != NULL) {
-        result = calloc(strlen(repo_name) + 1, sizeof(char));
+        result = calloc(sizeof(repo_name), sizeof(char));
         strcpy(result, repo_name);
     }
     return result;
