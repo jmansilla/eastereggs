@@ -8,7 +8,7 @@ from django.test import LiveServerTestCase
 from django.utils.timezone import now
 
 
-from delay.models import SOGroup, UNKNOWN_REPO_NAME, Deadline
+from delay.models import SOGroup, UNKNOWN_REPO_NAME, Deadline, PingPong
 
 
 URL_PATH = '/challenge/ping_pong'
@@ -60,12 +60,22 @@ class TestRunCompiled(LiveServerTestCase):
         self.group.current_delay = 123
         self.group.save()
         execution = self.execute_ping_pong()
+        self.assertGreater(PingPong.objects.count(), 0)
         self.assertIn(b'OK', execution.stderr)
         self.assertIn(b'delay=%d' % number, execution.stderr)
         execution = self.execute_ping_pong(verbose_mode=False)
         self.assertEqual(b'', execution.stderr)
 
+    def test_if_no_group_exists_with_that_repon_name_means_a_404(self):
+        # c module detects a repo name, but server does not have it
+        self.group.delete()
+        execution = self.execute_ping_pong()
+        self.assertIn(b'404', execution.stderr)
+        execution = self.execute_ping_pong(verbose_mode=False)
+        self.assertEqual(b'', execution.stderr)
+
     def test_unkown_repo_name_creates_a_default_group(self):
+        # c module fails to detect a repo name, sends special string "UNKNOWN_REPO_NAME"
         other_folder_name = 'yaddayadda'
         self.folder_path = self.create_tmp_folder_and_copy_and_compile(
             other_folder_name
@@ -74,16 +84,10 @@ class TestRunCompiled(LiveServerTestCase):
         self.assertIn(UNKNOWN_REPO_NAME.encode('utf-8'), execution.stderr)
         self.assertEqual(1, SOGroup.objects.filter(repo_name=UNKNOWN_REPO_NAME).count())
 
-    def test_no_group_means_a_404(self):
-        self.group.delete()
-        execution = self.execute_ping_pong()
-        self.assertIn(b'404', execution.stderr)
-        execution = self.execute_ping_pong(verbose_mode=False)
-        self.assertEqual(b'', execution.stderr)
-
-    def test_simple_integration(self):
+    def test_simple_integration_disabled(self):
         execution = self.execute_ping_pong(verbose_mode=True, extra_env={'PP_DISABLE_EASTER_EGG': '1'})
         self.assertEqual(b'Easter egg disabled. Exit\n', execution.stderr)
+        self.assertEqual(PingPong.objects.count(), 0)
 
     def test_messages_received_and_printed(self):
         dline = Deadline.objects.create(name='test', text='this is a sample text',
