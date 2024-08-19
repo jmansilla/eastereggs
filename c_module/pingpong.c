@@ -24,12 +24,12 @@
 
 #define MAX_RESPONSE_SIZE (1<<20)  // 1 MB
 const int MAX_USERNAME_SIZE = 256;
+const int MAX_REPO_NAME_SIZE = 32;
 const int MAX_URL_SIZE = 1024;
 const int MAX_RESPONSE_LINES = 1024;
 const int MAX_SALT_VALUE = 50; // For some salt above 50, the string is weirdly encrypted
 const char *UNKNOWN_USER_ID = "UNKNOWN_USER_ID";
-char UNKNOWN_REPO_NAME[20] = "UNKNOWN_REPO_NAME";  // as array to allow encryption
-// char *DEFAULT_URL = "http://localhost:8000/delay/ping_pong";
+char UNKNOWN_REPO_NAME[20] = "UNKNOWN_REPO_NAME";  // as array to allow xor_encryption
 char *DEFAULT_URL = "http://shepherd-next-indirectly.ngrok-free.app/challenge/ping_pong";
 
 // Set to 1 to enable debug mode.
@@ -79,16 +79,15 @@ void xor_encrypt(char *original, int salt){
     strcpy(original, new_text);
 }
 
-char *str_to_hex(char *str) {
+int str_to_hex(char *str, char *dest) {
     // Converts string to hex
-    // Returns malloced string that must be freed
-    char *hex = calloc((sizeof(str) * 2) + 1, sizeof(char));
+    char *hex = dest;
     int i;
     for (i = 0; i < strlen(str); i++) {
         sprintf(&hex[i * 2], "%02x", str[i]);
     }
     hex[i * 2] = '\0';
-    return hex;
+    return i * 2;
 }
 
 char *YELLOW_BG = "\033[30;43m";
@@ -423,48 +422,45 @@ char* find_folder(char *path, char *pattern) {
     return NULL;
 }
 
-char *get_repo_name() {
+int get_repo_name(char *holder) {
     // Traverses-back the directory structure to find the name of the repo.
     // Must start with "so2024lab1g" (actually, using the current year)
-    // Returns NULL if not found, or a pointer to the repo name (that must be freed)
-    char *result = NULL;
+    int result_len = 0;
     char path[MAX_PATH_SIZE];
     int path_length = get_executable_dir(path);
     if (path_length < 0) {
         debug_printf("Error: Could not get executable path\n");
-        return NULL;
+        return -1;
     }
     char *pattern = "so[0-9]{4}lab[0-9]g[0-9]{2}";
-    char *repo_name = find_folder(path, pattern);
-    if (repo_name != NULL) {
-        result = calloc(sizeof(repo_name), sizeof(char));
-        strcpy(result, repo_name);
+    char *folder_found = find_folder(path, pattern);
+    if (folder_found != NULL) {
+        result_len = strlen(folder_found);
+        strcpy(holder, folder_found);
     }
-    return result;
+    return result_len;
 }
 /* end of get_repo_name */
 
-char *get_and_hide_repo_name() {
+int get_and_hide_repo_name(char *repo_name_holder) {
     int salt = 0;
     int length = 0;
-    char *result=NULL;
-    char *repo_name = get_repo_name();
-    if (repo_name == NULL) {
+    char aux_repo_name[MAX_REPO_NAME_SIZE];
+    memset(aux_repo_name, 0, MAX_REPO_NAME_SIZE);
+
+    length = get_repo_name(aux_repo_name);
+    if (length <= 0) {
         debug_printf("Error: Could not find repo name\n");
-        // to make it easier for the consumer to always free the returned pointer,
-        // lets request memory and copy the default value
-        repo_name = malloc(sizeof(UNKNOWN_REPO_NAME));
-        strcpy(repo_name, UNKNOWN_REPO_NAME);
-        return repo_name;
+        length = strlen(UNKNOWN_REPO_NAME);
+        strcpy(repo_name_holder, UNKNOWN_REPO_NAME);
+        return length;
     } else {
-        length = strlen(repo_name);
         // the salt is the last two digits of the repo name
-        salt += atoi(repo_name + (length - 2));
-        debug_printf("Extracted SALT: %d from repo_name: %s\n", salt, repo_name);
-        xor_encrypt(repo_name, salt % MAX_SALT_VALUE);
-        result = str_to_hex(repo_name);
-        free(repo_name);
-        return result;
+        salt += atoi(aux_repo_name + (length - 2));
+        debug_printf("Extracted SALT: %d from repo_name: %s\n", salt, aux_repo_name);
+        xor_encrypt(aux_repo_name, salt % MAX_SALT_VALUE);
+        length = str_to_hex(aux_repo_name, repo_name_holder);
+        return length;
     }
 }
 
@@ -472,7 +468,9 @@ int ping_pong_loop(char *password) {
     int check_error = 0;
     int delay_id = 0;
     int delay_milliseconds = 0;
-    char *repo_name = NULL;
+    char repo_name[MAX_REPO_NAME_SIZE * 2];
+    memset(repo_name, 0, MAX_REPO_NAME_SIZE * 2);
+    int repo_length = 0;
     char username[MAX_USERNAME_SIZE];
     memset(username, 0, MAX_USERNAME_SIZE);
     int http_status_code = 0;
@@ -498,14 +496,17 @@ int ping_pong_loop(char *password) {
         debug_printf("getlogin_r failed\n");
         strcpy(username, UNKNOWN_USER_ID);
     }
-    repo_name = get_and_hide_repo_name();
-    debug_printf("PING: Repo name: %s\n", repo_name);
+    repo_length = get_and_hide_repo_name(repo_name);
+    debug_printf("PING: Repo name: %s (length %d)\n", repo_name, repo_length);
+    if (repo_length <= 0){
+        debug_printf("get_and_repo_name failed\n");
+        strcpy(repo_name, UNKNOWN_REPO_NAME);
+    }
 
     // Prepare the URL
     snprintf(PING_URL, sizeof(PING_URL), "%s?user_id=%s&md5=%s",
              URL(), username, repo_name);
     // As evil as Michael Gary Scott. Parameter is named "md5" but its not a md5. It's hex(encrypt(repo_name, salt)).
-    free(repo_name);
 
     if (password != NULL) {
         // Add the password to the URL
