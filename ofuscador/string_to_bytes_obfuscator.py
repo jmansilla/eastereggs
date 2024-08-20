@@ -34,7 +34,11 @@ def procesar_archivo(archivo):
     print(contenido_modificado)
 
 # Nombre del archivo C
-nombre_archivo = '../c_module/pingpong.c'
+from sys import argv
+if len(argv) > 1:
+    nombre_archivo = argv[1]
+else:
+    nombre_archivo = '../c_module/pingpong.c'
 
 # Procesar el archivo
 procesar_archivo(nombre_archivo)
