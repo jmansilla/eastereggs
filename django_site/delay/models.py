@@ -31,7 +31,7 @@ def validate_repo_name(value):
 
 class SOGroup(models.Model):
     group_name = models.CharField(max_length=100, null=True, blank=True, help_text="Optional. The name of the group")
-    repo_name = models.CharField(max_length=13, unique=True, validators=[validate_repo_name],
+    repo_name = models.CharField(max_length=20, unique=True, validators=[validate_repo_name],
                                  help_text="The repo name must follow the pattern soYYYYlabZgXX where YYYY is current year, "
                                             "Z is the Lab number, and XX is the actual group number (it may start with 0)")
 
