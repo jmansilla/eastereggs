@@ -1,5 +1,4 @@
-import pandas
-
+import csv
 from django.core.management.base import BaseCommand
 from delay.models import SOGroup
 
@@ -12,15 +11,12 @@ class Command(BaseCommand):
 
     def handle(self, *args, **kwargs):
         csv_filepath = kwargs['csv_filepath']
-        groups = pandas.read_csv(csv_filepath, dtype={'group_number': object})
-
-        for _, row in groups.iterrows():
+        reader = csv.DictReader(open(csv_filepath))
+        for row in reader:
             _, created = SOGroup.objects.get_or_create(
-                group_number=row['group_number'],
-                group_name=row['group_name'],
-                secret_key=row['secret_key']
+                repo_name=row['repo_name'],
             )
             if not created:
                 self.stdout.write(
-                    self.style.ERROR(f'Could not create group {row['group_name']}')
+                    self.style.ERROR(f'Could not create group {row["repo_name"]}')
                 )
