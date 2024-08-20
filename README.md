@@ -104,3 +104,17 @@ TODOs:
 * See when groups have cracked the bug
 * See pingpongs per group, filter by tampering attempts
 * See pingpongs per group and per user, filter by tampering attempts
+
+## For teachers
+
+  - REMEMBER TO SET the environment variable `PP_DISABLE_EASTER_EGG=1` every time you run your student's code to avoid all that's explained below.
+  - You can set the environment variable `PP_URL` for changing the url that the pingpongloop will use. Not recommended, but fyi.
+  - You can set the environment variable `PP_DEBUG=1` for having detailed debug prints of what's happening inside the ping_pong_loop function.
+  - In the codebase provided to students it's included the file obfuscated.c
+  - In some line of the codebase provided, there's a call to `ping_pong_loop` function, with a single `char *` argument set to `NULL`
+  - Every time that function is executed, several things happen, but the summary is:
+    - the name of the repo is extracted some how from the file system
+    - a request is made to a server, using the repository name, and the response will include an increasing number of milliseconds
+    - the ping_pong_loop will sleep that amout of milliseconds
+    - The callenge is NOT to remove this call, but to disable this easter-egg. They will need to provide a password to the ping_pong_loop for doing that. And that password is obtained from the same server that the ping_pong_loop function is interacting with.
+
