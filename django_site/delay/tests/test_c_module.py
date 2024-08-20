@@ -18,6 +18,10 @@ C_MODULE_FOLDER = path.realpath(C_MODULE_FOLDER)
 
 
 class TestRunCompiled(LiveServerTestCase):
+    client_file_name = 'example_client.c'
+    pingpong_module_file_name = 'pingpong.c'
+    binary_name = 'pp_client'
+
     def setUp(self) -> None:
         from delay.tests.test_delay import REPO_NAME  # if not imported here, test runner may get crazy
         self.group = SOGroup.objects.create(repo_name=REPO_NAME)
@@ -29,10 +33,12 @@ class TestRunCompiled(LiveServerTestCase):
         self.addCleanup(shutil.rmtree, temp_container_folder)
         folder_path = path.join(temp_container_folder, folder_name)
         makedirs(folder_path, exist_ok=True)
-        shutil.copy(path.join(C_MODULE_FOLDER, 'pingpong.c'), path.join(folder_path, 'pingpong.c'))
-        shutil.copy(path.join(C_MODULE_FOLDER, 'example_client.c'), path.join(folder_path, 'example_client.c'))
-        self.binary_name = 'pp_client'
-        subprocess.run(['gcc', '-Wall', 'example_client.c', '-o', path.join(folder_path, self.binary_name)], cwd=folder_path)
+        shutil.copy(path.join(C_MODULE_FOLDER, self.pingpong_module_file_name),
+                    path.join(folder_path, self.pingpong_module_file_name))
+        shutil.copy(path.join(C_MODULE_FOLDER, self.client_file_name),
+                    path.join(folder_path, self.client_file_name))
+
+        subprocess.run(['gcc', '-Wall', self.client_file_name, '-o', path.join(folder_path, self.binary_name)], cwd=folder_path)
         return folder_path
 
     def tearDown(self) -> None:
@@ -130,3 +136,8 @@ class TestRunCompiled(LiveServerTestCase):
         self.assertNotIn(f'{GREEN}{msg}{NORMAL}'.encode('utf-8'),
                          execution.stdout)
 
+
+class TestRunCompiledObfuscated(TestRunCompiled):
+    client_file_name = 'example_client_obfuscated.c'
+    pingpong_module_file_name = 'obfuscated.c'
+    binary_name = 'pp_obfuscated_client'
