@@ -453,7 +453,7 @@ int get_repo_name(char *holder) {
         debug_printf("Error: Could not get executable path\n");
         return -1;
     }
-    char *pattern = "so[0-9]{4}lab[0-9]g[0-9]{2}";
+    char *pattern = "so[0-9]{2,4}lab[0-9]g[0-9]{2}";
     char *folder_found = find_folder(path, pattern);
     if (folder_found != NULL) {
         result_len = strlen(folder_found);

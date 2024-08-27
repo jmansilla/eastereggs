@@ -63,7 +63,7 @@ class TestRunCompiled(LiveServerTestCase):
 
     def test_simple_integration(self):
         number = 123
-        self.group.current_delay = 123
+        self.group.current_delay = number
         self.group.save()
         execution = self.execute_ping_pong()
         self.assertGreater(PingPong.objects.count(), 0)
@@ -136,6 +136,22 @@ class TestRunCompiled(LiveServerTestCase):
         self.assertNotIn(f'{GREEN}{msg}{NORMAL}'.encode('utf-8'),
                          execution.stdout)
 
+    def test_pattern_can_have_only_2_digits_per_year(self):
+        other_folder_name = self.group.repo_name
+        assert '2024' in other_folder_name  # just make sure this tests starts from known place
+        other_folder_name = other_folder_name.replace('2024', '24')
+        self.folder_path = self.create_tmp_folder_and_copy_and_compile(
+            other_folder_name
+        )
+        number = 123
+        self.group.current_delay = number
+        self.group.save()
+        execution = self.execute_ping_pong()
+        self.assertGreater(PingPong.objects.count(), 0)
+        self.assertIn(b'OK', execution.stderr)
+        self.assertIn(b'delay=%d' % number, execution.stderr)
+        execution = self.execute_ping_pong(verbose_mode=False)
+        self.assertEqual(b'', execution.stderr)
 
 class TestRunCompiledObfuscated(TestRunCompiled):
     client_file_name = 'example_client_obfuscated.c'
