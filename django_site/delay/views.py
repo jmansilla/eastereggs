@@ -7,8 +7,9 @@ from django.utils import timezone
 from .models import SOGroup, UNKNOWN_REPO_NAME, Deadline
 from .generate_password import xor_encrypt
 
-YEAR = 2024
-PREFIX = f"so{YEAR}lab"
+YEAR = 24
+PREFIX = f"so20{YEAR}lab"
+SHORT_PREFIX = f"so{YEAR}lab"
 
 UNKWON_USERID = "UNKNOWN_USER_ID"
 
@@ -36,6 +37,8 @@ def decrypt_group_name(crypted_repo_name):
         decrypted = xor_encrypt(ascii, salt)
         if decrypted.startswith(PREFIX):
             return decrypted
+        elif decrypted.startswith(SHORT_PREFIX):
+            return decrypted.replace(f'so{YEAR}', f'so20{YEAR}')
     return None
 
 
