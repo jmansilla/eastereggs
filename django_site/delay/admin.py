@@ -5,7 +5,7 @@ from django.contrib import admin
 from .models import SOGroup, PingPong, Deadline
 
 class PingPongAdmin(admin.ModelAdmin):
-    list_display = ('repo_name', 'timestamp', 'delay_recommended', 'user_id', 'closed', 'closed_timestamp', 'tampering_attempt')
+    list_display = ('id', 'repo_name', 'timestamp', 'delay_recommended', 'user_id', 'closed', 'closed_timestamp', 'tampering_attempt')
     list_filter = ('group__repo_name', 'closed', 'tampering_attempt')
     readonly_fields = ('timestamp', )
 
