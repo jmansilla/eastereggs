@@ -99,6 +99,7 @@ class SOGroup(models.Model):
 
         pp.closed = True
         pp.closed_timestamp = timezone.now()
+        pp.save()
         delta = pp.closed_timestamp - pp.timestamp
         pp.group.wasted_time += delta.seconds * 1000 + round(delta.microseconds / 1000)
         pp.group.save()
